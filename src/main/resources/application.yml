@@ -1,4 +1,4 @@
 spring:
   data:
     mongodb:
-      uri: mongodb+srv://admin:admin@fisiocluster.tn8x1zh.mongodb.net/fisio?retryWrites=true&w=majority
+      uri: mongodb+srv://admin:admin@fisiocluster.tn8x1zh.mongodb.net/fisio?appName=FisioCluster
