@@ -14,6 +14,8 @@ public class Paciente {
     @Id
     private String id;
 
+    private String leadId;
+
     private String nome;
     private String sobrenome;
     private String telefone;
@@ -35,11 +37,14 @@ public class Paciente {
         this.criadoEm = LocalDateTime.now();
     }
 
+
     public static Paciente fromLead(Lead lead) {
-        return new Paciente(
-                lead.getNome(),
-                lead.getCelular(),
-                lead.getEmail()
-        );
+        Paciente p = new Paciente();
+        p.nome = lead.getNome();
+        p.telefone = lead.getCelular();
+        p.email = lead.getEmail();
+        p.id = lead.getId();
+        p.criadoEm = LocalDateTime.now();
+        return p;
     }
 }
