@@ -9,7 +9,7 @@ public class CriarLeadRequest {
     private String sobrenome;
     private String email;
 
-    private String celular;
+    private String telefone;
     private String motivo;
 
 }

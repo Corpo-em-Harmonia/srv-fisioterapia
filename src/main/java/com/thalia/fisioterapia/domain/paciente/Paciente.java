@@ -41,7 +41,7 @@ public class Paciente {
     public static Paciente fromLead(Lead lead) {
         Paciente p = new Paciente();
         p.nome = lead.getNome();
-        p.telefone = lead.getCelular();
+        p.telefone = lead.getTelefone();
         p.email = lead.getEmail();
         p.id = lead.getId();
         p.criadoEm = LocalDateTime.now();

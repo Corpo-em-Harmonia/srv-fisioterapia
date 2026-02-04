@@ -5,12 +5,14 @@ import com.thalia.fisioterapia.dto.CriarLeadRequest;
 import com.thalia.fisioterapia.infra.repository.LeadRepository;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 @Service
-public class CriarLeadService {
+public class LeadService {
 
     private final LeadRepository repository;
 
-    public CriarLeadService(LeadRepository repository) {
+    public LeadService(LeadRepository repository) {
         this.repository = repository;
     }
 
@@ -24,10 +26,13 @@ public class CriarLeadService {
                 request.getNome(),
                 request.getSobrenome(),
                 request.getEmail(),
-                request.getCelular(),
-                request.getMotivo()
+                request.getTelefone()
         );
 
         return repository.save(lead);
+    }
+
+    public List<Lead> allLead() {
+        return repository.findAll();
     }
 }

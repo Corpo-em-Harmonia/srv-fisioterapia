@@ -1,32 +1,36 @@
 package com.thalia.fisioterapia.domain.lead;
 
 
+import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.springframework.data.annotation.Id;
+
+import java.util.Date;
 
 @Data
 @NoArgsConstructor
+@Entity
+@Table(name = "leads")
 public class Lead {
 
     @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
     private String id;
     private String nome;
     private String sobrenome;
     private String email;
-    private String celular;
-    private String motivo;
+    private String telefone;
+    private Date date;
     private LeadStatus status;
 
 
-    public Lead(String nome, String sobrenome, String email, String celular,String motivo) {
-        this.id = id;
+    public Lead(String nome, String sobrenome, String email, String telefone) {
         this.nome = nome;
         this.sobrenome = sobrenome;
         this.email = email;
-        this.celular = celular;
+        this.telefone = telefone;
         this.status = LeadStatus.NOVO;
-        this.motivo = motivo;
+        this.date = new Date();
     }
 
     public Lead(
@@ -34,17 +38,17 @@ public class Lead {
             String nome,
             String sobrenome,
             String email,
-            String celular,
+            String telefone,
             LeadStatus status,
-            String motivo
+            Date date
     ) {
         this.id = id;
         this.nome = nome;
         this.sobrenome = sobrenome;
         this.email = email;
-        this.celular = celular;
+        this.telefone = telefone;
         this.status = status;
-        this.motivo = motivo;
+        this.date = new Date();
     }
 
     public void iniciarAvaliacao() {
@@ -62,7 +66,10 @@ public class Lead {
     }
 
 
-
+    @PrePersist
+    protected void onCreate() {
+        this.date = new Date();
+    }
 
     public void marcarComoConvertido() {
         this.status = LeadStatus.AVALIACAO_INICIADA;

@@ -2,20 +2,19 @@ package com.thalia.fisioterapia.controllers;
 
 import com.thalia.fisioterapia.domain.lead.Lead;
 import com.thalia.fisioterapia.dto.CriarLeadRequest;
-import com.thalia.fisioterapia.services.CriarLeadService;
+import com.thalia.fisioterapia.services.LeadService;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/public/leads")
-public class CriarLeadController {
+public class LeadController {
 
-    private final CriarLeadService leadService;
+    private final LeadService leadService;
 
-    public CriarLeadController(CriarLeadService leadService) {
+    public LeadController(LeadService leadService) {
         this.leadService = leadService;
     }
 
@@ -24,5 +23,10 @@ public class CriarLeadController {
     @PostMapping
     public ResponseEntity<Lead> criaLead (@RequestBody CriarLeadRequest request) {
         return ResponseEntity.ok(leadService.criar(request));
+    }
+
+    @GetMapping
+    public ResponseEntity<List<Lead>> allLeads () {
+        return ResponseEntity.ok(leadService.allLead());
     }
 }
