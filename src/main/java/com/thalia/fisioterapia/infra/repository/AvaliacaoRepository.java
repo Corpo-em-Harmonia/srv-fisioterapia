@@ -8,5 +8,8 @@ import org.springframework.data.mongodb.repository.MongoRepository;
 import java.util.Optional;
 
 public interface AvaliacaoRepository extends MongoRepository<Avaliacao, String> {
-    Optional<Avaliacao> findByLeadIdAndStatus(String leadId, AvaliacaoStatus status);
+
+    Optional<Avaliacao> findByPacienteIdAndStatus(String pacienteId, AvaliacaoStatus status);
+
+    Optional<Avaliacao> findFirstByPacienteIdOrderByCriadaEmDesc(String pacienteId);
 }

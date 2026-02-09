@@ -2,13 +2,15 @@ package com.thalia.fisioterapia.domain.paciente;
 
 import com.thalia.fisioterapia.domain.lead.Lead;
 import lombok.Data;
+import lombok.Getter;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.LocalDateTime;
 
-@Data
+
 @Document(collection = "pacientes")
+@Getter
 public class Paciente {
 
     @Id
@@ -26,7 +28,8 @@ public class Paciente {
     private Boolean cirurgico;
     private String profissao;
     private LocalDateTime criadoEm;
-    protected Paciente() {
+
+    private Paciente() {
         // construtor para o Mongo
     }
 
@@ -39,12 +42,14 @@ public class Paciente {
 
 
     public static Paciente fromLead(Lead lead) {
-        Paciente p = new Paciente();
-        p.nome = lead.getNome();
-        p.telefone = lead.getTelefone();
-        p.email = lead.getEmail();
-        p.id = lead.getId();
-        p.criadoEm = LocalDateTime.now();
-        return p;
+
+        Paciente paciente = new Paciente();
+
+        paciente.nome = lead.getNome();
+        paciente.sobrenome = lead.getSobrenome();
+        paciente.telefone = lead.getTelefone();
+        paciente.email = lead.getEmail();
+
+        return paciente;
     }
 }

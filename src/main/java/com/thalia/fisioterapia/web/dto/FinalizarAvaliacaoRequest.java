@@ -1,4 +1,4 @@
-package com.thalia.fisioterapia.dto;
+package com.thalia.fisioterapia.web.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;

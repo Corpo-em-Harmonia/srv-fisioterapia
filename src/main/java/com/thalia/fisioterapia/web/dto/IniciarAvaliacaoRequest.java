@@ -1,4 +1,4 @@
-package com.thalia.fisioterapia.dto;
+package com.thalia.fisioterapia.web.dto;
 
 import lombok.Data;
 

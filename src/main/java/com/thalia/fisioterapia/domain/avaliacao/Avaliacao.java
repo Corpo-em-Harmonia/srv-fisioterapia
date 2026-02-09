@@ -1,59 +1,81 @@
 package com.thalia.fisioterapia.domain.avaliacao;
 
-import lombok.Data;
+import lombok.Getter;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import java.time.LocalDateTime;
+
 @Document(collection = "avaliacoes")
-@Data
+@Getter
 public class Avaliacao {
 
     @Id
     private String id;
 
-    private String leadId;
-    private AvaliacaoStatus status;
+    private String pacienteId;
 
+    private AvaliacaoStatus status;
+    private LocalDateTime criadaEm;
+    private LocalDateTime finalizadaEm;
+
+    // ====== FICHA CLÍNICA ======
     private String medico;
     private String hda;
     private String hpp;
     private String diagnostico;
+    private String testesRealizados;
+    private String goniometria;
     private String condutaTerapeutica;
     private String prognostico;
+    private String desfecho;
+    private String comodidade;
+    private String medicamentos;
+    private String cirurgia;
 
-    protected Avaliacao() {
-        // construtor para o Mongo
+
+    private Avaliacao(){}
+
+    private Avaliacao(String pacienteId){
+        this.pacienteId = pacienteId;
+        this.status = AvaliacaoStatus.AGUARDANDO;
+        this.criadaEm = LocalDateTime.now();
     }
 
-    private Avaliacao(String leadId) {
-        this.leadId = leadId;
-        this.status = AvaliacaoStatus.EM_ANDAMENTO;
+    // fábrica (criação controlada)
+    public static Avaliacao criarParaPaciente(String pacienteId){
+        return new Avaliacao(pacienteId);
     }
 
-    public static Avaliacao iniciar(String leadId) {
-        return new Avaliacao(leadId);
+    // início do atendimento
+    public void iniciar(){
+        if(this.status != AvaliacaoStatus.AGUARDANDO){
+            throw new IllegalStateException("Avaliação já iniciada ou finalizada");
+        }
+        this.status = AvaliacaoStatus.EM_ATENDIMENTO;
     }
 
-    public void finalizar(
-            String medico,
-            String hda,
-            String hpp,
-            String diagnostico,
-            String condutaTerapeutica,
-            String prognostico
-    ) {
-        if (this.status != AvaliacaoStatus.EM_ANDAMENTO) {
-            throw new IllegalStateException("Avaliação não está em andamento");
+    // finalização
+    public void finalizar(FichaClinica ficha){
+
+        if(this.status != AvaliacaoStatus.EM_ATENDIMENTO){
+            throw new IllegalStateException("Atendimento não iniciado");
         }
 
-        this.medico = medico;
-        this.hda = hda;
-        this.hpp = hpp;
-        this.diagnostico = diagnostico;
-        this.condutaTerapeutica = condutaTerapeutica;
-        this.prognostico = prognostico;
-        this.status = AvaliacaoStatus.FINALIZADA;
-    }
+        this.medico = ficha.medico();
+        this.hda = ficha.hda();
+        this.hpp = ficha.hpp();
+        this.diagnostico = ficha.diagnostico();
+        this.testesRealizados = ficha.testesRealizados();
+        this.goniometria = ficha.goniometria();
+        this.condutaTerapeutica = ficha.condutaTerapeutica();
+        this.prognostico = ficha.prognostico();
+        this.desfecho = ficha.desfecho();
+        this.comodidade = ficha.comodidade();
+        this.medicamentos = ficha.medicamentos();
+        this.cirurgia = ficha.cirurgia();
 
-    // getters (ou Lombok @Getter)
+        this.status = AvaliacaoStatus.FINALIZADA;
+        this.finalizadaEm = LocalDateTime.now();
+    }
 }
