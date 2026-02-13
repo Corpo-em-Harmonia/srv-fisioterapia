@@ -1,13 +1,8 @@
 package com.thalia.fisioterapia.domain.lead;
 
-
-import com.thalia.fisioterapia.domain.paciente.Paciente;
 import jakarta.persistence.*;
-import lombok.Data;
 import lombok.Getter;
-import lombok.NoArgsConstructor;
 import org.springframework.data.mongodb.core.mapping.Document;
-
 import java.util.Date;
 
 @Entity
@@ -40,35 +35,21 @@ public class Lead {
         this.criadoEm = new Date();
     }
 
-    // =========================
-    // REGRAS DE NEGÓCIO
-    // =========================
-
     public void registrarContato() {
         validarEstado(LeadStatus.NOVO);
         this.status = LeadStatus.CONTATADO;
     }
 
-    public void agendarAvaliacao() {
+    public void marcarComoAgendado() {
+        // só pode agendar depois de contatado
         validarEstado(LeadStatus.CONTATADO);
         this.status = LeadStatus.AGENDADO;
     }
 
     public void marcarComoPerdido() {
-        if (status == LeadStatus.CONVERTIDO)
-            throw new IllegalStateException("Lead já convertido");
-
+        if (status == LeadStatus.PERDIDO) return;
         this.status = LeadStatus.PERDIDO;
     }
-
-    public Paciente confirmarComparecimento() {
-        validarEstado(LeadStatus.AGENDADO);
-
-        this.status = LeadStatus.CONVERTIDO;
-
-        return Paciente.fromLead(this);
-    }
-
 
     private void validarEstado(LeadStatus esperado) {
         if (this.status != esperado) {

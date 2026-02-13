@@ -5,7 +5,7 @@ public enum LeadStatus {
 
     NOVO,        // formulário chegou
     CONTATADO,   // recepção falou com paciente
-    AGENDADO,    // avaliação marcada
+    AGENDADO,
     CONVERTIDO,  // virou paciente (compareceu)
-    PERDIDO
+    PERDIDO,     // desistiu // fisio terminou
 }

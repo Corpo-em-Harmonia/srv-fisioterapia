@@ -1,38 +1,32 @@
 package com.thalia.fisioterapia.application.services;
 
-import com.thalia.fisioterapia.domain.avaliacao.Avaliacao;
 import com.thalia.fisioterapia.domain.lead.Lead;
 import com.thalia.fisioterapia.domain.lead.LeadAcao;
-import com.thalia.fisioterapia.domain.lead.LeadStatus;
-import com.thalia.fisioterapia.domain.paciente.Paciente;
-import com.thalia.fisioterapia.web.dto.CriarLeadRequest;
-import com.thalia.fisioterapia.infra.repository.AvaliacaoRepository;
+import com.thalia.fisioterapia.domain.sessao.Sessao;
+import com.thalia.fisioterapia.domain.sessao.SessaoTipo;
 import com.thalia.fisioterapia.infra.repository.LeadRepository;
-import com.thalia.fisioterapia.infra.repository.PacienteRepository;
+import com.thalia.fisioterapia.infra.repository.SessaoRepository;
+import com.thalia.fisioterapia.web.dto.AgendarAvaliacaoRequest;
+import com.thalia.fisioterapia.web.dto.CriarLeadRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
-import static com.thalia.fisioterapia.domain.lead.LeadAcao.CONFIRMAR_COMPARECIMENTO;
-
 @Service
 public class LeadService {
 
     private final LeadRepository leadRepository;
-    private final PacienteRepository pacienteRepository;
-    private final AvaliacaoRepository avaliacaoRepository;
+    private final SessaoRepository sessaoRepository;
 
-    public LeadService(LeadRepository repository, PacienteRepository pacienteRepository, AvaliacaoRepository avaliacaoRepository) {
-        this.leadRepository = repository;
-        this.pacienteRepository = pacienteRepository;
-        this.avaliacaoRepository = avaliacaoRepository;
+    public LeadService(LeadRepository leadRepository, SessaoRepository sessaoRepository) {
+        this.leadRepository = leadRepository;
+        this.sessaoRepository = sessaoRepository;
     }
 
     public Lead criar(CriarLeadRequest request) {
-
-        if (leadRepository.existsByEmail(request.getEmail())) {
-            throw new RuntimeException("Lead já existe");
+        if (request.getEmail() != null && leadRepository.existsByEmail(request.getEmail())) {
+            throw new IllegalStateException("Lead já existe");
         }
 
         Lead lead = new Lead(
@@ -45,53 +39,43 @@ public class LeadService {
         return leadRepository.save(lead);
     }
 
-    public List<Lead> allLead() {
+    public List<Lead> listar() {
         return leadRepository.findAll();
     }
 
     @Transactional
-    private void confirmarComparecimento(Lead lead){
+    public Lead executarAcaoSimples(String leadId, LeadAcao acao) {
+        Lead lead = buscarLead(leadId);
 
-        if (lead.getStatus() == LeadStatus.CONVERTIDO) {
-            throw new IllegalStateException("Lead já convertido em paciente");
+        switch (acao) {
+            case REGISTRAR_CONTATO -> lead.registrarContato();
+            case AGENDAR_AVALIACAO -> lead.marcarComoAgendado();
+            case CANCELAR -> lead.marcarComoPerdido();
         }
 
-        // 1 — vira paciente (regra no domínio)
-        Paciente paciente = lead.confirmarComparecimento();
-        pacienteRepository.save(paciente);
-
-        // 2 — cria avaliação inicial
-        Avaliacao avaliacao = Avaliacao.criarParaPaciente(paciente.getId());
-        avaliacaoRepository.save(avaliacao);
-
-        // 3 — salva lead (status já mudou dentro do domínio)
-        leadRepository.save(lead);
+        return leadRepository.save(lead);
     }
 
     @Transactional
-    public void executarAcao(String leadId, LeadAcao acao) {
+    public Sessao agendarAvaliacao(String leadId, AgendarAvaliacaoRequest req) {
+        Lead lead = buscarLead(leadId);
 
-        Lead lead = leadRepository.findById(leadId)
-                .orElseThrow(() -> new RuntimeException("Lead não encontrado"));
+        // domínio do lead
+        lead.marcarComoAgendado();
+        leadRepository.save(lead);
 
-        switch (acao) {
+        // cria sessão de AVALIACAO
+        Sessao sessao = new Sessao(
+                lead.getId(),
+                SessaoTipo.AVALIACAO,
+                req.dataHora()
+        );
 
-            case CONFIRMAR_COMPARECIMENTO -> confirmarComparecimento(lead);
+        return sessaoRepository.save(sessao);
+    }
 
-            case CANCELAR -> {
-                lead.marcarComoPerdido();     // usa regra do domínio
-                leadRepository.save(lead);
-            }
-
-            case REGISTRAR_CONTATO -> {
-                lead.registrarContato();
-                leadRepository.save(lead);
-            }
-
-            case AGENDAR_AVALIACAO -> {
-                lead.agendarAvaliacao();
-                leadRepository.save(lead);
-            }
-        }
+    private Lead buscarLead(String id) {
+        return leadRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Lead não encontrado"));
     }
 }
