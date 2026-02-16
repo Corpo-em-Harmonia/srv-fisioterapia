@@ -1,4 +1,4 @@
-package com.thalia.fisioterapia.web.dto;
+package com.thalia.fisioterapia.web.dto.agenda;
 
 import java.time.Instant;
 

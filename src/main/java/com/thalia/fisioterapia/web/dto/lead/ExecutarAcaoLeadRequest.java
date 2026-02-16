@@ -1,4 +1,4 @@
-package com.thalia.fisioterapia.web.dto;
+package com.thalia.fisioterapia.web.dto.lead;
 
 import com.thalia.fisioterapia.domain.lead.LeadAcao;
 

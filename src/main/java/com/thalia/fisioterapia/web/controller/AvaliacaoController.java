@@ -1,8 +1,8 @@
-package com.thalia.fisioterapia.web.controllers;
+package com.thalia.fisioterapia.web.controller;
 
-import com.thalia.fisioterapia.web.dto.FinalizarAvaliacaoRequest;
-import com.thalia.fisioterapia.web.dto.IniciarAvaliacaoRequest;
-import com.thalia.fisioterapia.application.services.AvaliacaoService;
+import com.thalia.fisioterapia.web.dto.avaliacao.FinalizarAvaliacaoRequest;
+import com.thalia.fisioterapia.web.dto.avaliacao.IniciarAvaliacaoRequest;
+import com.thalia.fisioterapia.application.service.AvaliacaoService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;

@@ -1,4 +1,4 @@
-package com.thalia.fisioterapia.web.dto;
+package com.thalia.fisioterapia.web.dto.lead;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;

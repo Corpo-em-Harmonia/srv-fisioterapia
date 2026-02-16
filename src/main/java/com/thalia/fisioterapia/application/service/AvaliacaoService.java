@@ -1,9 +1,9 @@
-package com.thalia.fisioterapia.application.services;
+package com.thalia.fisioterapia.application.service;
 
 import com.thalia.fisioterapia.domain.avaliacao.Avaliacao;
 import com.thalia.fisioterapia.domain.avaliacao.FichaClinica;
-import com.thalia.fisioterapia.web.dto.FinalizarAvaliacaoRequest;
-import com.thalia.fisioterapia.infra.repository.AvaliacaoRepository;
+import com.thalia.fisioterapia.web.dto.avaliacao.FinalizarAvaliacaoRequest;
+import com.thalia.fisioterapia.infra.repository.avaliacao.AvaliacaoRepository;
 import org.springframework.stereotype.Service;
 @Service
 public class AvaliacaoService {

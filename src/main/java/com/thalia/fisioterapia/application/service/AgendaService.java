@@ -1,9 +1,9 @@
-package com.thalia.fisioterapia.application.services;
+package com.thalia.fisioterapia.application.service;
 
 import com.thalia.fisioterapia.domain.lead.Lead;
 import com.thalia.fisioterapia.domain.sessao.*;
-import com.thalia.fisioterapia.infra.repository.LeadRepository;
-import com.thalia.fisioterapia.infra.repository.SessaoRepository;
+import com.thalia.fisioterapia.infra.repository.lead.LeadRepository;
+import com.thalia.fisioterapia.infra.repository.sessao.SessaoRepository;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -17,7 +17,7 @@ public class AgendaService {
         this.sessaoRepository = sessaoRepository;
     }
 
-    public Sessao agendarAvaliacao(String leadId, java.time.Instant dataHora) {
+    public Sessao agendarAvaliacao(String leadId, java.time.Instant dataHora, String observacao) {
         Lead lead = leadRepository.findById(leadId)
                 .orElseThrow(() -> new RuntimeException("Lead não encontrado"));
 
@@ -26,7 +26,7 @@ public class AgendaService {
         leadRepository.save(lead);
 
         // cria sessão de avaliação
-        Sessao sessao = new Sessao(leadId, SessaoTipo.AVALIACAO, dataHora);
+        Sessao sessao = new Sessao(leadId, SessaoTipo.AVALIACAO, dataHora,observacao);
         return sessaoRepository.save(sessao);
     }
 }

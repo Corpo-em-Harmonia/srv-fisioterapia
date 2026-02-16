@@ -25,16 +25,19 @@ public class Sessao {
 
     private Instant criadoEm;
     private Instant atualizadoEm;
+    private String observacao;
+
 
     protected Sessao() {}
 
-    public Sessao(String leadId, SessaoTipo tipo, Instant dataHora) {
+    public Sessao(String leadId, SessaoTipo tipo, Instant dataHora, String observacao) {
         this.leadId = leadId;
         this.tipo = tipo;
         this.dataHora = dataHora;
         this.status = SessaoStatus.MARCADA;
         this.criadoEm = Instant.now();
         this.atualizadoEm = Instant.now();
+        this.observacao = observacao;
     }
 
     public void setPaciente(String pacienteId) {

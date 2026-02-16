@@ -1,4 +1,4 @@
-package com.thalia.fisioterapia.infra.repository;
+package com.thalia.fisioterapia.infra.repository.sessao;
 
 import com.thalia.fisioterapia.domain.sessao.Sessao;
 import com.thalia.fisioterapia.domain.sessao.SessaoStatus;
@@ -12,6 +12,7 @@ import java.util.Optional;
 public interface SessaoRepository extends MongoRepository<Sessao, String> {
 
     List<Sessao> findByDataHoraBetween(Instant start, Instant end);
+    List<Sessao> findByDataHoraBetweenOrderByDataHoraAsc(Instant start, Instant end);
 
     boolean existsByDataHoraAndStatusIn(Instant dataHora, Collection<SessaoStatus> status);
 

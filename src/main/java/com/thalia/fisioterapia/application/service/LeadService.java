@@ -1,13 +1,15 @@
-package com.thalia.fisioterapia.application.services;
+package com.thalia.fisioterapia.application.service;
 
 import com.thalia.fisioterapia.domain.lead.Lead;
 import com.thalia.fisioterapia.domain.lead.LeadAcao;
+import com.thalia.fisioterapia.domain.lead.LeadStatus;
 import com.thalia.fisioterapia.domain.sessao.Sessao;
 import com.thalia.fisioterapia.domain.sessao.SessaoTipo;
-import com.thalia.fisioterapia.infra.repository.LeadRepository;
-import com.thalia.fisioterapia.infra.repository.SessaoRepository;
-import com.thalia.fisioterapia.web.dto.AgendarAvaliacaoRequest;
-import com.thalia.fisioterapia.web.dto.CriarLeadRequest;
+import com.thalia.fisioterapia.infra.repository.lead.LeadRepository;
+import com.thalia.fisioterapia.infra.repository.sessao.SessaoRepository;
+import com.thalia.fisioterapia.web.dto.agenda.AgendarAvaliacaoRequest;
+import com.thalia.fisioterapia.web.dto.lead.CriarLeadRequest;
+import com.thalia.fisioterapia.web.dto.lead.LeadResponse;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,10 +41,20 @@ public class LeadService {
         return leadRepository.save(lead);
     }
 
-    public List<Lead> listar() {
-        return leadRepository.findAll();
+
+    public List<LeadResponse> listarTodos() {
+        return leadRepository.findAll()
+                .stream()
+                .map(this::toResponse)
+                .toList();
     }
 
+    public List<LeadResponse> listarAtivos() {
+        return leadRepository.findByStatusIn(List.of(LeadStatus.NOVO, LeadStatus.CONTATADO))
+                .stream()
+                .map(this::toResponse)
+                .toList();
+    }
     @Transactional
     public Lead executarAcaoSimples(String leadId, LeadAcao acao) {
         Lead lead = buscarLead(leadId);
@@ -68,7 +80,8 @@ public class LeadService {
         Sessao sessao = new Sessao(
                 lead.getId(),
                 SessaoTipo.AVALIACAO,
-                req.dataHora()
+                req.dataHora(),
+                req.observacao()
         );
 
         return sessaoRepository.save(sessao);
@@ -77,5 +90,14 @@ public class LeadService {
     private Lead buscarLead(String id) {
         return leadRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Lead não encontrado"));
+    }
+
+    private LeadResponse toResponse(Lead lead) {
+        return new LeadResponse(
+                lead.getId(),
+                lead.getNome(),
+                lead.getTelefone(),
+                lead.getStatus().name().toLowerCase()
+        );
     }
 }
