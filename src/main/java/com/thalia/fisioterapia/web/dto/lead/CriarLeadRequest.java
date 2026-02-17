@@ -14,5 +14,6 @@ public class CriarLeadRequest {
     @NotBlank private String telefone;
     @Email
     @NotBlank private String email;
+    private String observacao; // opcional
 
 }

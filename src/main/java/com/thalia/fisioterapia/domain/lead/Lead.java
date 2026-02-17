@@ -2,12 +2,15 @@ package com.thalia.fisioterapia.domain.lead;
 
 import jakarta.persistence.*;
 import lombok.Getter;
+import lombok.Setter;
 import org.springframework.data.mongodb.core.mapping.Document;
-import java.util.Date;
+
+import java.time.LocalDateTime;
 
 @Entity
 @Document(collection = "leads")
 @Getter
+@Setter
 public class Lead {
 
     @Id
@@ -18,21 +21,23 @@ public class Lead {
     private String sobrenome;
     private String email;
     private String telefone;
+    private String observacao;
 
     @Enumerated(EnumType.STRING)
     private LeadStatus status;
 
-    private Date criadoEm;
+    private LocalDateTime criadoEm;
 
     protected Lead() {}
 
-    public Lead(String nome, String sobrenome, String email, String telefone) {
+    public Lead(String nome, String sobrenome, String email, String telefone,String observacao) {
         this.nome = nome;
         this.sobrenome = sobrenome;
         this.email = email;
         this.telefone = telefone;
         this.status = LeadStatus.NOVO;
-        this.criadoEm = new Date();
+        this.observacao = observacao;
+        this.criadoEm = LocalDateTime.now();
     }
 
     public void registrarContato() {
@@ -41,8 +46,12 @@ public class Lead {
     }
 
     public void marcarComoAgendado() {
-        // só pode agendar depois de contatado
-        validarEstado(LeadStatus.CONTATADO);
+        // pode agendar se for NOVO ou CONTATADO
+        if (this.status != LeadStatus.NOVO && this.status != LeadStatus.CONTATADO) {
+            throw new IllegalStateException(
+                    "Não é possível agendar. Estado atual: " + status + " | Estados permitidos: NOVO ou CONTATADO"
+            );
+        }
         this.status = LeadStatus.AGENDADO;
     }
 

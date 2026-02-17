@@ -13,6 +13,8 @@ import com.thalia.fisioterapia.web.dto.lead.LeadResponse;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
+import java.time.ZoneId;
 import java.util.List;
 
 @Service
@@ -35,7 +37,8 @@ public class LeadService {
                 request.getNome(),
                 request.getSobrenome(),
                 request.getEmail(),
-                request.getTelefone()
+                request.getTelefone(),
+                request.getObservacao()
         );
 
         return leadRepository.save(lead);
@@ -76,11 +79,15 @@ public class LeadService {
         lead.marcarComoAgendado();
         leadRepository.save(lead);
 
+        Instant dataHoraInstant = req.dataHora()
+                .atZone(ZoneId.of("America/Sao_Paulo"))
+                .toInstant();
+
         // cria sessão de AVALIACAO
         Sessao sessao = new Sessao(
                 lead.getId(),
                 SessaoTipo.AVALIACAO,
-                req.dataHora(),
+                dataHoraInstant,
                 req.observacao()
         );
 
@@ -96,8 +103,12 @@ public class LeadService {
         return new LeadResponse(
                 lead.getId(),
                 lead.getNome(),
+                lead.getSobrenome(),
                 lead.getTelefone(),
-                lead.getStatus().name().toLowerCase()
+                lead.getEmail(),
+                lead.getObservacao(),
+                lead.getStatus().name().toLowerCase(),
+                lead.getCriadoEm()
         );
     }
 }
