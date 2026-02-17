@@ -11,6 +11,5 @@ public record LeadResponse(String id,
                            String email,
                            String observacao,
                            String status,
-                           @JsonFormat(pattern = "dd/MM/yyyy HH:mm")
                            LocalDateTime criadoEm) {
 }

@@ -27,14 +27,9 @@ public class LeadController {
     }
 
     @PostMapping
-    public ResponseEntity<CriarLeadResponse> criaLead(@Valid @RequestBody CriarLeadRequest request) {
-        Lead lead = leadService.criar(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(new CriarLeadResponse(
-                lead.getId(),
-                lead.getNome(),
-                lead.getTelefone(),
-                lead.getStatus().name()
-        ));
+    public ResponseEntity<LeadResponse> criaLead(@Valid @RequestBody CriarLeadRequest request) {
+        LeadResponse response = leadService.criar(request);  // ✅ LeadResponse
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @GetMapping

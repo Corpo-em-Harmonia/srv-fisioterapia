@@ -28,7 +28,7 @@ public class LeadService {
         this.sessaoRepository = sessaoRepository;
     }
 
-    public Lead criar(CriarLeadRequest request) {
+    public LeadResponse criar(CriarLeadRequest request) {
         if (request.getEmail() != null && leadRepository.existsByEmail(request.getEmail())) {
             throw new IllegalStateException("Lead já existe");
         }
@@ -40,8 +40,8 @@ public class LeadService {
                 request.getTelefone(),
                 request.getObservacao()
         );
-
-        return leadRepository.save(lead);
+        Lead saved = leadRepository.save(lead);
+        return toResponse(saved);
     }
 
 
