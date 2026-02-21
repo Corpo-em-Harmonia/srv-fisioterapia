@@ -111,4 +111,11 @@ public class LeadService {
                 lead.getCriadoEm()
         );
     }
+
+    public void deletarLead(String id) {
+        if (!leadRepository.existsById(id)) {
+            throw new IllegalArgumentException("Lead não encontrado");
+        }
+        leadRepository.deleteById(id);
+    }
 }

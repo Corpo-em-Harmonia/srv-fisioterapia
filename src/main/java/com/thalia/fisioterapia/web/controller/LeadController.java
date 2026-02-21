@@ -59,4 +59,10 @@ public class LeadController {
         Sessao sessao = leadService.agendarAvaliacao(id, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(sessao);
     }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deletarLead(@PathVariable String id) {
+        leadService.deletarLead(id);
+        return ResponseEntity.noContent().build();
+    }
 }

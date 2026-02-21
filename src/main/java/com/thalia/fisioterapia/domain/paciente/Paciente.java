@@ -28,6 +28,8 @@ public class Paciente {
     private Boolean cirurgico;
     private String profissao;
     private LocalDateTime criadoEm;
+    private int totalFaltas = 0;
+    private int totalComparecimentos = 0;
 
     private Paciente() {
         // construtor para o Mongo
@@ -51,5 +53,14 @@ public class Paciente {
         paciente.email = lead.getEmail();
 
         return paciente;
+    }
+
+    // ✅ NOVOS MÉTODOS
+    public void incrementarFaltas() {
+        this.totalFaltas++;
+    }
+
+    public void incrementarComparecimentos() {
+        this.totalComparecimentos++;
     }
 }

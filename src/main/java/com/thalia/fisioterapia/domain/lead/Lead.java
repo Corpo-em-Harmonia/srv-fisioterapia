@@ -27,6 +27,8 @@ public class Lead {
     private LeadStatus status;
 
     private LocalDateTime criadoEm;
+    private int totalFaltas = 0;
+    private int totalComparecimentos = 0;
 
     protected Lead() {}
 
@@ -66,5 +68,13 @@ public class Lead {
                     "Ação inválida. Estado atual: " + status + " | Esperado: " + esperado
             );
         }
+    }
+
+    public void incrementarFaltas() {
+        this.totalFaltas++;
+    }
+
+    public void incrementarComparecimentos() {
+        this.totalComparecimentos++;
     }
 }
