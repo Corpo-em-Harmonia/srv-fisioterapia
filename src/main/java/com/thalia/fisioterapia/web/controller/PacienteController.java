@@ -1,27 +1,26 @@
-//package com.thalia.fisioterapia.adapters.in.web;
-//
-//
-//import com.thalia.fisioterapia.adapters.in.dto.PacienteDTO;
-//import com.thalia.fisioterapia.application.ports.in.CadastrarPacienteUseCase;
-//import com.thalia.fisioterapia.domain.paciente.Paciente;
-//import org.springframework.http.ResponseEntity;
-//import org.springframework.web.bind.annotation.PostMapping;
-//import org.springframework.web.bind.annotation.RequestBody;
-//import org.springframework.web.bind.annotation.RequestMapping;
-//import org.springframework.web.bind.annotation.RestController;
-//
-//@RestController
-//@RequestMapping("/pacientes")
-//public class PacienteController {
-//
-//    private final CadastrarPacienteUseCase useCase;
-//
-//    public PacienteController(CadastrarPacienteUseCase useCase) {
-//        this.useCase = useCase;
-//    }
-//
-//    @PostMapping
-//    public ResponseEntity<Paciente> cadastrar(@RequestBody PacienteDTO dto) {
-//        return ResponseEntity.ok(useCase.cadastrar(dto.nome(), dto.telefone()));
-//    }
-//}
+package com.thalia.fisioterapia.web.controller;
+
+import com.thalia.fisioterapia.application.service.PacienteService;
+import com.thalia.fisioterapia.web.dto.paciente.PacienteAtivoResponse;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/pacientes")
+public class PacienteController {
+
+    private final PacienteService pacienteService;
+
+    public PacienteController(PacienteService pacienteService) {
+        this.pacienteService = pacienteService;
+    }
+
+    @GetMapping("/ativos")
+    public ResponseEntity<List<PacienteAtivoResponse>> ativos() {
+        return ResponseEntity.ok(pacienteService.listarAtivos());
+    }
+}

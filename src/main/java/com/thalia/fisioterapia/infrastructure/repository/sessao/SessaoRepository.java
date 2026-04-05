@@ -46,6 +46,7 @@ public interface SessaoRepository extends MongoRepository<Sessao, String> {
 
     // Sessões por paciente
     List<Sessao> findByPacienteIdOrderByDataHoraDesc(String pacienteId);
+        List<Sessao> findByPacienteIdOrderByDataHoraAsc(String pacienteId);
 
     // Sessões vinculadas a uma avaliação
     List<Sessao> findByAvaliacaoIdOrderByDataHoraAsc(String avaliacaoId);
