@@ -1,7 +1,6 @@
 package com.thalia.fisioterapia.domain.paciente;
 
 import com.thalia.fisioterapia.domain.lead.Lead;
-import lombok.Data;
 import lombok.Getter;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
@@ -44,18 +43,17 @@ public class Paciente {
 
 
     public static Paciente fromLead(Lead lead) {
-
         Paciente paciente = new Paciente();
-
+        paciente.leadId = lead.getId();
         paciente.nome = lead.getNome();
         paciente.sobrenome = lead.getSobrenome();
         paciente.telefone = lead.getTelefone();
         paciente.email = lead.getEmail();
-
+        paciente.criadoEm = LocalDateTime.now();
         return paciente;
     }
 
-    // ✅ NOVOS MÉTODOS
+    // Métodos de domínio
     public void incrementarFaltas() {
         this.totalFaltas++;
     }

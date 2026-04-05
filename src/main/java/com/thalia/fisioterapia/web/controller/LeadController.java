@@ -2,11 +2,9 @@ package com.thalia.fisioterapia.web.controller;
 
 import com.thalia.fisioterapia.application.service.LeadService;
 import com.thalia.fisioterapia.domain.lead.Lead;
-import com.thalia.fisioterapia.domain.lead.LeadStatus;
 import com.thalia.fisioterapia.domain.sessao.Sessao;
 import com.thalia.fisioterapia.web.dto.agenda.AgendarAvaliacaoRequest;
 import com.thalia.fisioterapia.web.dto.lead.CriarLeadRequest;
-import com.thalia.fisioterapia.web.dto.lead.CriarLeadResponse;
 import com.thalia.fisioterapia.web.dto.lead.ExecutarAcaoLeadRequest;
 import com.thalia.fisioterapia.web.dto.lead.LeadResponse;
 import jakarta.validation.Valid;

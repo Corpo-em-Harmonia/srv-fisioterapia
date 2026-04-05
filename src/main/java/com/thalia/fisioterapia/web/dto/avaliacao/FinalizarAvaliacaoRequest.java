@@ -1,18 +1,12 @@
 package com.thalia.fisioterapia.web.dto.avaliacao;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
-import lombok.Getter;
 
 @Data
-@Getter
 public class FinalizarAvaliacaoRequest {
 
-    @JsonProperty("lead_Id")
-    private String leadId;
-
-    private String medico;
     private String avaliacaoId;
+    private String medico;
     private String hda;
     private String hpp;
     private String diagnostico;
@@ -24,5 +18,4 @@ public class FinalizarAvaliacaoRequest {
     private String comodidade;
     private String medicamentos;
     private String cirurgia;
-
 }

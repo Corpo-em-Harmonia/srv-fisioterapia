@@ -10,6 +10,7 @@ import com.thalia.fisioterapia.infra.repository.sessao.SessaoRepository;
 import com.thalia.fisioterapia.web.dto.agenda.AgendarAvaliacaoRequest;
 import com.thalia.fisioterapia.web.dto.lead.CriarLeadRequest;
 import com.thalia.fisioterapia.web.dto.lead.LeadResponse;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,6 +23,9 @@ public class LeadService {
 
     private final LeadRepository leadRepository;
     private final SessaoRepository sessaoRepository;
+
+    @Value("${app.timezone:America/Sao_Paulo}")
+    private String timezone;
 
     public LeadService(LeadRepository leadRepository, SessaoRepository sessaoRepository) {
         this.leadRepository = leadRepository;
@@ -44,7 +48,6 @@ public class LeadService {
         return toResponse(saved);
     }
 
-
     public List<LeadResponse> listarTodos() {
         return leadRepository.findAll()
                 .stream()
@@ -58,6 +61,7 @@ public class LeadService {
                 .map(this::toResponse)
                 .toList();
     }
+
     @Transactional
     public Lead executarAcaoSimples(String leadId, LeadAcao acao) {
         Lead lead = buscarLead(leadId);
@@ -75,15 +79,13 @@ public class LeadService {
     public Sessao agendarAvaliacao(String leadId, AgendarAvaliacaoRequest req) {
         Lead lead = buscarLead(leadId);
 
-        // domínio do lead
         lead.marcarComoAgendado();
         leadRepository.save(lead);
 
         Instant dataHoraInstant = req.dataHora()
-                .atZone(ZoneId.of("America/Sao_Paulo"))
+                .atZone(ZoneId.of(timezone))
                 .toInstant();
 
-        // cria sessão de AVALIACAO
         Sessao sessao = new Sessao(
                 lead.getId(),
                 SessaoTipo.AVALIACAO,

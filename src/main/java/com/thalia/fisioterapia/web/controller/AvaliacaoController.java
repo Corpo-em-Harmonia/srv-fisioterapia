@@ -10,22 +10,18 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/avaliacao")
+@RequestMapping("/api/avaliacao")
 public class AvaliacaoController {
 
     private final AvaliacaoService avaliacaoService;
 
-    public AvaliacaoController(
-
-            AvaliacaoService avaliacaoService
-    ) {
+    public AvaliacaoController(AvaliacaoService avaliacaoService) {
         this.avaliacaoService = avaliacaoService;
-
     }
 
     @PostMapping("/iniciar")
     public ResponseEntity<Void> iniciar(@RequestBody IniciarAvaliacaoRequest request) {
-        avaliacaoService.iniciar(request.getLeadId());
+        avaliacaoService.iniciar(request.getAvaliacaoId());
         return ResponseEntity.ok().build();
     }
 
