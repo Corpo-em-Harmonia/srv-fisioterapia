@@ -1,5 +1,7 @@
 package com.thalia.fisioterapia.application.service;
 
+import com.thalia.fisioterapia.application.exception.BusinessException;
+import com.thalia.fisioterapia.application.exception.ResourceNotFoundException;
 import com.thalia.fisioterapia.domain.sessao.Sessao;
 import com.thalia.fisioterapia.domain.sessao.SessaoStatus;
 import com.thalia.fisioterapia.infra.repository.lead.LeadRepository;
@@ -86,7 +88,7 @@ public class SessaoService {
                         .toInstant();
             }
 
-            default -> throw new IllegalArgumentException("Período inválido: " + periodo);
+            default -> throw new BusinessException("Período inválido: " + periodo);
         }
 
         if (statusFiltro != null && !statusFiltro.isEmpty()) {
@@ -174,7 +176,7 @@ public class SessaoService {
                 List.of(SessaoStatus.MARCADA, SessaoStatus.REMARCADA)
         );
         if (ocupado) {
-            throw new IllegalArgumentException("Horário já está ocupado.");
+            throw new BusinessException("Horário já está ocupado.");
         }
 
         s.remarcar(novaDataHora);
@@ -218,6 +220,6 @@ public class SessaoService {
     // Busca sessão por ID
     private Sessao getById(String id) {
         return sessaoRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Sessão não encontrada: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Sessão não encontrada: " + id));
     }
 }

@@ -1,10 +1,7 @@
 package com.thalia.fisioterapia.web.controller;
 
-import com.thalia.fisioterapia.application.service.AgendaService;
-import com.thalia.fisioterapia.domain.sessao.Sessao;
 import com.thalia.fisioterapia.domain.sessao.SessaoStatus;
 import com.thalia.fisioterapia.infra.repository.sessao.SessaoRepository;
-import com.thalia.fisioterapia.web.dto.agenda.AgendarAvaliacaoRequest;
 import com.thalia.fisioterapia.web.dto.sessao.DisponibilidadeResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -57,6 +54,5 @@ public class AgendamentoController {
         return ResponseEntity.ok(resp);
     }
 }
-
 
 

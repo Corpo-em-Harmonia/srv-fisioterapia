@@ -1,20 +1,18 @@
 package com.thalia.fisioterapia.domain.lead;
 
-import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.LocalDateTime;
 
-@Entity
 @Document(collection = "leads")
 @Getter
 @Setter
 public class Lead {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
     private String id;
 
     private String nome;
@@ -23,7 +21,6 @@ public class Lead {
     private String telefone;
     private String observacao;
 
-    @Enumerated(EnumType.STRING)
     private LeadStatus status;
 
     private LocalDateTime criadoEm;
