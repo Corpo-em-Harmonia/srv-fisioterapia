@@ -1,5 +1,6 @@
 package com.thalia.fisioterapia.application.service;
 
+import com.thalia.fisioterapia.application.exception.ResourceNotFoundException;
 import com.thalia.fisioterapia.domain.avaliacao.Avaliacao;
 import com.thalia.fisioterapia.domain.avaliacao.AvaliacaoStatus;
 import com.thalia.fisioterapia.domain.avaliacao.FichaClinica;
@@ -39,7 +40,7 @@ public class AvaliacaoService {
     public void iniciar(String avaliacaoId){
 
         Avaliacao avaliacao = repository.findById(avaliacaoId)
-                .orElseThrow();
+                .orElseThrow(() -> new ResourceNotFoundException("Avaliação não encontrada"));
 
         avaliacao.iniciar();
 
@@ -49,7 +50,7 @@ public class AvaliacaoService {
     public void finalizar(FinalizarAvaliacaoRequest request){
 
         Avaliacao avaliacao = repository.findById(request.getAvaliacaoId())
-                .orElseThrow();
+                .orElseThrow(() -> new ResourceNotFoundException("Avaliação não encontrada"));
 
         FichaClinica ficha = new FichaClinica(
                 request.getMedico(),

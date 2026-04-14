@@ -1,5 +1,7 @@
 package com.thalia.fisioterapia.application.service;
 
+import com.thalia.fisioterapia.application.exception.BusinessException;
+import com.thalia.fisioterapia.application.exception.ResourceNotFoundException;
 import com.thalia.fisioterapia.domain.lead.Lead;
 import com.thalia.fisioterapia.domain.lead.LeadAcao;
 import com.thalia.fisioterapia.domain.lead.LeadStatus;
@@ -20,6 +22,8 @@ import java.util.List;
 @Service
 public class LeadService {
 
+    private static final ZoneId DEFAULT_ZONE = ZoneId.of("America/Sao_Paulo");
+
     private final LeadRepository leadRepository;
     private final SessaoRepository sessaoRepository;
 
@@ -30,7 +34,7 @@ public class LeadService {
 
     public LeadResponse criar(CriarLeadRequest request) {
         if (request.getEmail() != null && leadRepository.existsByEmail(request.getEmail())) {
-            throw new IllegalStateException("Lead já existe");
+            throw new BusinessException("Lead já existe");
         }
 
         Lead lead = new Lead(
@@ -80,7 +84,7 @@ public class LeadService {
         leadRepository.save(lead);
 
         Instant dataHoraInstant = req.dataHora()
-                .atZone(ZoneId.of("America/Sao_Paulo"))
+                .atZone(DEFAULT_ZONE)
                 .toInstant();
 
         // cria sessão de AVALIACAO
@@ -96,7 +100,7 @@ public class LeadService {
 
     private Lead buscarLead(String id) {
         return leadRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Lead não encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Lead não encontrado"));
     }
 
     private LeadResponse toResponse(Lead lead) {
@@ -114,7 +118,7 @@ public class LeadService {
 
     public void deletarLead(String id) {
         if (!leadRepository.existsById(id)) {
-            throw new IllegalArgumentException("Lead não encontrado");
+            throw new ResourceNotFoundException("Lead não encontrado");
         }
         leadRepository.deleteById(id);
     }
