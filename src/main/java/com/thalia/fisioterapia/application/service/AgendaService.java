@@ -1,9 +1,7 @@
 package com.thalia.fisioterapia.application.service;
 
-import com.thalia.fisioterapia.domain.lead.Lead;
-import com.thalia.fisioterapia.domain.sessao.*;
-import com.thalia.fisioterapia.infra.repository.lead.LeadRepository;
-import com.thalia.fisioterapia.infra.repository.sessao.SessaoRepository;
+import com.thalia.fisioterapia.infrastructure.repository.sessao.SessaoRepository;
+import com.thalia.fisioterapia.infrastructure.repository.lead.LeadRepository;
 import org.springframework.stereotype.Service;
 
 @Service

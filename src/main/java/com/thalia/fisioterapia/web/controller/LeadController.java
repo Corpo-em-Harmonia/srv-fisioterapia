@@ -2,9 +2,8 @@ package com.thalia.fisioterapia.web.controller;
 
 import com.thalia.fisioterapia.application.service.LeadService;
 import com.thalia.fisioterapia.domain.lead.Lead;
-import com.thalia.fisioterapia.domain.lead.LeadStatus;
-import com.thalia.fisioterapia.domain.sessao.Sessao;
 import com.thalia.fisioterapia.web.dto.agenda.AgendarAvaliacaoRequest;
+import com.thalia.fisioterapia.web.dto.agenda.AgendarAvaliacaoResponse;
 import com.thalia.fisioterapia.web.dto.lead.CriarLeadRequest;
 import com.thalia.fisioterapia.web.dto.lead.CriarLeadResponse;
 import com.thalia.fisioterapia.web.dto.lead.ExecutarAcaoLeadRequest;
@@ -52,12 +51,12 @@ public class LeadController {
 
     // ✅ Agendar avaliação (com payload) → cria Sessao + muda Lead p/ AGENDADO
     @PostMapping("/{id}/agendar-avaliacao")
-    public ResponseEntity<Sessao> agendarAvaliacao(
+    public ResponseEntity<AgendarAvaliacaoResponse> agendarAvaliacao(
             @PathVariable String id,
             @Valid @RequestBody AgendarAvaliacaoRequest request
     ) {
-        Sessao sessao = leadService.agendarAvaliacao(id, request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(sessao);
+        AgendarAvaliacaoResponse response = leadService.agendarAvaliacao(id, request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @DeleteMapping("/{id}")

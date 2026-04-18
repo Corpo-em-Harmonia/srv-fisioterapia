@@ -1,22 +1,44 @@
 package com.thalia.fisioterapia.application.service;
 
+import com.thalia.fisioterapia.application.exception.AgendaConflictException;
 import com.thalia.fisioterapia.application.exception.BusinessException;
 import com.thalia.fisioterapia.application.exception.ResourceNotFoundException;
+import com.thalia.fisioterapia.domain.sessao.EscopoRemarcacao;
+import com.thalia.fisioterapia.domain.sessao.PerfilUsuario;
 import com.thalia.fisioterapia.domain.sessao.Sessao;
 import com.thalia.fisioterapia.domain.sessao.SessaoStatus;
-import com.thalia.fisioterapia.infra.repository.lead.LeadRepository;
-import com.thalia.fisioterapia.infra.repository.paciente.PacienteRepository;
-import com.thalia.fisioterapia.infra.repository.sessao.SessaoRepository;
+import com.thalia.fisioterapia.infrastructure.repository.paciente.PacienteRepository;
+import com.thalia.fisioterapia.infrastructure.repository.sessao.SessaoRepository;
+import com.thalia.fisioterapia.infrastructure.repository.lead.LeadRepository;
 import org.springframework.stereotype.Service;
 
-import java.time.*;
-import java.time.temporal.ChronoUnit;
+import java.time.Duration;
+import java.time.DayOfWeek;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.HashSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Service
 public class SessaoService {
+
+    private static final List<SessaoStatus> STATUS_CONFLITO = List.of(
+            SessaoStatus.MARCADA,
+            SessaoStatus.REMARCADA,
+            SessaoStatus.AGUARDANDO_AVALIACAO
+    );
+    private static final String USUARIO_SISTEMA = "sistema";
+    private static final PerfilUsuario PERFIL_PADRAO = PerfilUsuario.RECEPCAO;
+    private static final LocalTime INICIO_ATENDIMENTO = LocalTime.of(8, 0);
+    private static final LocalTime FIM_ATENDIMENTO = LocalTime.of(18, 0);
 
     private final SessaoRepository sessaoRepository;
     private final LeadRepository leadRepository;
@@ -163,24 +185,41 @@ public class SessaoService {
     // Cancela sessão
     public Sessao cancelar(String id) {
         Sessao s = getById(id);
-        s.cancelar();
+        s.cancelar(null, USUARIO_SISTEMA, PERFIL_PADRAO);
         return sessaoRepository.save(s);
     }
 
-    // Remarca sessão (verifica se horário está livre)
-    public Sessao remarcar(String id, Instant novaDataHora) {
-        Sessao s = getById(id);
+    public RemarcacaoResultado remarcar(String id, Instant novaDataHora, String escopoRaw, String motivo) {
+        Sessao sessaoBase = getById(id);
+        EscopoRemarcacao escopo = parseEscopo(escopoRaw);
+        validarJanelaAtendimento(novaDataHora);
 
-        boolean ocupado = sessaoRepository.existsByDataHoraAndStatusIn(
-                novaDataHora,
-                List.of(SessaoStatus.MARCADA, SessaoStatus.REMARCADA)
-        );
-        if (ocupado) {
-            throw new BusinessException("Horário já está ocupado.");
+        List<Sessao> sessoesAfetadas = resolverEscopoRemarcacao(sessaoBase, escopo);
+        Duration deslocamento = Duration.between(sessaoBase.getDataHora(), novaDataHora);
+        Set<String> idsAfetados = sessoesAfetadas.stream().map(Sessao::getId).collect(java.util.stream.Collectors.toSet());
+
+        Map<String, Instant> novosHorarios = new HashMap<>();
+        for (Sessao sessao : sessoesAfetadas) {
+            Instant destino = sessao.getId().equals(sessaoBase.getId())
+                    ? novaDataHora
+                    : sessao.getDataHora().plus(deslocamento);
+            validarJanelaAtendimento(destino);
+            validarConflitosAgenda(destino, sessao.getId(), idsAfetados);
+            novosHorarios.put(sessao.getId(), destino);
         }
 
-        s.remarcar(novaDataHora);
-        return sessaoRepository.save(s);
+        for (Sessao sessao : sessoesAfetadas) {
+            Instant destino = novosHorarios.get(sessao.getId());
+            sessao.remarcar(destino, escopo.name().toLowerCase(), motivo, USUARIO_SISTEMA, PERFIL_PADRAO);
+        }
+
+        sessaoRepository.saveAll(sessoesAfetadas);
+
+        return new RemarcacaoResultado(
+                sessoesAfetadas.size(),
+                sessaoBase.getSerieId(),
+                escopo.name().toLowerCase()
+        );
     }
 
     // Incrementa contador de faltas no Lead ou Paciente
@@ -217,9 +256,87 @@ public class SessaoService {
         return sessaoRepository.findByStatus(SessaoStatus.AGUARDANDO_AVALIACAO);
     }
 
+    private EscopoRemarcacao parseEscopo(String escopoRaw) {
+        try {
+            return EscopoRemarcacao.fromNullable(escopoRaw);
+        } catch (IllegalArgumentException ex) {
+            throw new BusinessException("escopo invalido: " + escopoRaw);
+        }
+    }
+
+    private List<Sessao> resolverEscopoRemarcacao(Sessao sessaoBase, EscopoRemarcacao escopo) {
+        if (escopo == EscopoRemarcacao.SOMENTE_ESTA) {
+            return List.of(sessaoBase);
+        }
+
+        if (sessaoBase.getSerieId() == null || sessaoBase.getSerieId().isBlank()) {
+            throw new BusinessException("Sessao nao pertence a uma serie para escopo informado");
+        }
+
+        List<Sessao> serie = sessaoRepository.findBySerieIdOrderByNumeroOcorrenciaAsc(sessaoBase.getSerieId());
+        if (escopo == EscopoRemarcacao.TODA_SERIE) {
+            return serie;
+        }
+
+        int ocorrenciaAtual = sessaoBase.getNumeroOcorrencia() != null ? sessaoBase.getNumeroOcorrencia() : 1;
+        return serie.stream()
+                .filter(s -> (s.getNumeroOcorrencia() != null ? s.getNumeroOcorrencia() : 1) >= ocorrenciaAtual)
+                .sorted(Comparator.comparing(s -> s.getNumeroOcorrencia() != null ? s.getNumeroOcorrencia() : 1))
+                .toList();
+    }
+
+    private void validarJanelaAtendimento(Instant dataHora) {
+        LocalTime horario = dataHora.atZone(ZoneId.systemDefault()).toLocalTime();
+        if (horario.isBefore(INICIO_ATENDIMENTO) || !horario.isBefore(FIM_ATENDIMENTO)) {
+            throw new BusinessException("Horario fora da janela de atendimento");
+        }
+    }
+
+    private void validarConflitosAgenda(Instant dataHora, String sessaoAtualId, Set<String> idsDaMesmaOperacao) {
+        List<Sessao> conflitos = sessaoRepository.findByDataHoraAndStatusIn(dataHora, STATUS_CONFLITO).stream()
+                .filter(s -> !s.getId().equals(sessaoAtualId))
+                .filter(s -> !idsDaMesmaOperacao.contains(s.getId()))
+                .toList();
+
+        if (conflitos.isEmpty()) {
+            return;
+        }
+
+        List<AgendaConflictException.ConflitoAgendaItem> itens = conflitos.stream()
+                .map(s -> new AgendaConflictException.ConflitoAgendaItem(
+                        s.getId(),
+                        s.getDataHora(),
+                        resolverNomePessoa(s)
+                ))
+                .toList();
+
+        throw new AgendaConflictException("Ja existe sessao nesse horario", itens);
+    }
+
+    private String resolverNomePessoa(Sessao sessao) {
+        if (sessao.getPacienteId() != null) {
+            return pacienteRepository.findById(sessao.getPacienteId())
+                    .map(p -> p.getNome() != null ? p.getNome() : "Paciente")
+                    .orElse("Paciente");
+        }
+        if (sessao.getLeadId() != null) {
+            return leadRepository.findById(sessao.getLeadId())
+                    .map(l -> l.getNome() != null ? l.getNome() : "Lead")
+                    .orElse("Lead");
+        }
+        return "Paciente";
+    }
+
     // Busca sessão por ID
     private Sessao getById(String id) {
         return sessaoRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Sessão não encontrada: " + id));
+    }
+
+    public record RemarcacaoResultado(
+            int sessoesAfetadas,
+            String serieId,
+            String escopoAplicado
+    ) {
     }
 }

@@ -3,9 +3,10 @@ package com.thalia.fisioterapia.web.controller;
 import com.thalia.fisioterapia.application.service.SessaoService;
 import com.thalia.fisioterapia.domain.sessao.Sessao;
 import com.thalia.fisioterapia.domain.sessao.SessaoStatus;
-import com.thalia.fisioterapia.infra.repository.lead.LeadRepository;
-import com.thalia.fisioterapia.infra.repository.paciente.PacienteRepository;
+import com.thalia.fisioterapia.infrastructure.repository.paciente.PacienteRepository;
+import com.thalia.fisioterapia.infrastructure.repository.lead.LeadRepository;
 import com.thalia.fisioterapia.web.dto.sessao.RemarcarSessaoRequest;
+import com.thalia.fisioterapia.web.dto.sessao.RemarcarSessaoResponse;
 import com.thalia.fisioterapia.web.dto.sessao.SessaoResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -84,8 +85,13 @@ public class SessaoController {
     }
 
     @PatchMapping("/{id}/remarcar")
-    public ResponseEntity<SessaoResponse> remarcar(@PathVariable String id, @Valid @RequestBody RemarcarSessaoRequest req) {
-        return ResponseEntity.ok(toResponse(sessaoService.remarcar(id, req.dataHora())));
+    public ResponseEntity<RemarcarSessaoResponse> remarcar(@PathVariable String id, @Valid @RequestBody RemarcarSessaoRequest req) {
+        SessaoService.RemarcacaoResultado resultado = sessaoService.remarcar(id, req.dataHora(), req.escopo(), req.motivo());
+        return ResponseEntity.ok(new RemarcarSessaoResponse(
+                resultado.sessoesAfetadas(),
+                resultado.serieId(),
+                resultado.escopoAplicado()
+        ));
     }
 
     //  NOVO: Recepção marca comparecimento de avaliação
@@ -123,12 +129,15 @@ public class SessaoController {
 
         return new SessaoResponse(
                 s.getId(),
+            s.getLeadId(),
                 s.getPacienteId(),
                 nome,
                 telefone,
                 s.getDataHora().toString(),
                 s.getStatus().name().toLowerCase(),
-                s.getTipo().name().toLowerCase()
+            s.getTipo().name().toLowerCase(),
+            s.getSerieId(),
+            s.getNumeroOcorrencia()
         );
     }
 }

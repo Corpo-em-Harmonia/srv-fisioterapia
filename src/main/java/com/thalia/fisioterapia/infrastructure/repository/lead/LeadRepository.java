@@ -1,4 +1,4 @@
-package com.thalia.fisioterapia.infra.repository.lead;
+package com.thalia.fisioterapia.infrastructure.repository.lead;
 
 import com.thalia.fisioterapia.domain.lead.Lead;
 import com.thalia.fisioterapia.domain.lead.LeadStatus;

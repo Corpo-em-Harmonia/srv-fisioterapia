@@ -1,11 +1,9 @@
 package com.thalia.fisioterapia.web.dto.agenda;
 
-import java.time.Instant;
-
 public record AgendarAvaliacaoResponse(
-        String leadId,
-        String sessaoId,
-        Instant dataHora,
-        String leadStatus,
-        String sessaoStatus
+        String modoAgendamento,
+        String serieId,
+        int sessoesGeradas,
+        String sessaoInicialId,
+        String mensagem
 ) {}

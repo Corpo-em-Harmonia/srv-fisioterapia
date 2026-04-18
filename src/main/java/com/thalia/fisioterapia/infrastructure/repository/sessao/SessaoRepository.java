@@ -1,4 +1,4 @@
-package com.thalia.fisioterapia.infra.repository.sessao;
+package com.thalia.fisioterapia.infrastructure.repository.sessao;
 
 import com.thalia.fisioterapia.domain.sessao.Sessao;
 import com.thalia.fisioterapia.domain.sessao.SessaoStatus;
@@ -17,9 +17,9 @@ public interface SessaoRepository extends MongoRepository<Sessao, String> {
     List<Sessao> findByDataHoraBetween(Instant start, Instant end);
     List<Sessao> findByDataHoraBetweenOrderByDataHoraAsc(Instant start, Instant end);
     boolean existsByDataHoraAndStatusIn(Instant dataHora, Collection<SessaoStatus> status);
+    List<Sessao> findByDataHoraAndStatusIn(Instant dataHora, Collection<SessaoStatus> status);
     Optional<Sessao> findByLeadIdAndStatusInOrderByDataHoraDesc(String leadId, Collection<SessaoStatus> status);
 
-    // ✅ Novas queries para filtros avançados
 
     // Sessões pendentes (hoje + atrasadas não confirmadas)
     @Query("{ 'dataHora': { $lte: ?0 }, 'status': { $in: ['MARCADA', 'REMARCADA'] } }")
@@ -50,6 +50,8 @@ public interface SessaoRepository extends MongoRepository<Sessao, String> {
 
     // Sessões vinculadas a uma avaliação
     List<Sessao> findByAvaliacaoIdOrderByDataHoraAsc(String avaliacaoId);
+
+    List<Sessao> findBySerieIdOrderByNumeroOcorrenciaAsc(String serieId);
 
     List<Sessao> findByStatusOrderByDataHoraAsc(SessaoStatus status);
 

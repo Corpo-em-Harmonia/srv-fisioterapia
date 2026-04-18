@@ -1,7 +1,7 @@
 package com.thalia.fisioterapia.web.controller;
 
 import com.thalia.fisioterapia.domain.sessao.SessaoStatus;
-import com.thalia.fisioterapia.infra.repository.sessao.SessaoRepository;
+import com.thalia.fisioterapia.infrastructure.repository.sessao.SessaoRepository;
 import com.thalia.fisioterapia.web.dto.sessao.DisponibilidadeResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;

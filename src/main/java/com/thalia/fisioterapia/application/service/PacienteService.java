@@ -2,9 +2,9 @@ package com.thalia.fisioterapia.application.service;
 
 import com.thalia.fisioterapia.domain.avaliacao.AvaliacaoStatus;
 import com.thalia.fisioterapia.domain.paciente.Paciente;
-import com.thalia.fisioterapia.infra.repository.avaliacao.AvaliacaoRepository;
-import com.thalia.fisioterapia.infra.repository.paciente.PacienteRepository;
-import com.thalia.fisioterapia.infra.repository.sessao.SessaoRepository;
+import com.thalia.fisioterapia.infrastructure.repository.avaliacao.AvaliacaoRepository;
+import com.thalia.fisioterapia.infrastructure.repository.paciente.PacienteRepository;
+import com.thalia.fisioterapia.infrastructure.repository.sessao.SessaoRepository;
 import com.thalia.fisioterapia.web.dto.paciente.PacienteAtivoResponse;
 import org.springframework.stereotype.Service;
 

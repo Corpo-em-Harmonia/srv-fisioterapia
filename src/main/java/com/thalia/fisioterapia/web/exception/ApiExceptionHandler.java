@@ -1,6 +1,8 @@
 package com.thalia.fisioterapia.web.exception;
 
 import com.thalia.fisioterapia.application.exception.BusinessException;
+import com.thalia.fisioterapia.application.exception.AgendaConflictException;
+import com.thalia.fisioterapia.application.exception.PlanoForaValidadeException;
 import com.thalia.fisioterapia.application.exception.ResourceNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -25,6 +27,40 @@ public class ApiExceptionHandler {
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ApiErrorResponse> handleBusiness(BusinessException ex) {
         return buildResponse(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
+    @ExceptionHandler(AgendaConflictException.class)
+    public ResponseEntity<AgendaConflictResponse> handleAgendaConflict(AgendaConflictException ex) {
+        var conflitos = ex.getConflitos().stream()
+                .map(c -> new AgendaConflictResponse.ConflitoItem(
+                        c.sessaoId(),
+                        c.dataHora().toString(),
+                        c.pacienteNome()
+                ))
+                .toList();
+
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(
+                new AgendaConflictResponse(
+                        "CONFLITO_AGENDA",
+                        ex.getMessage(),
+                        conflitos
+                )
+        );
+    }
+
+    @ExceptionHandler(PlanoForaValidadeException.class)
+    public ResponseEntity<PlanoForaValidadeResponse> handlePlanoForaValidade(PlanoForaValidadeException ex) {
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(
+                new PlanoForaValidadeResponse(
+                        "PLANO_FORA_DA_VALIDADE",
+                        ex.getMessage(),
+                        new PlanoForaValidadeResponse.Detalhes(
+                                ex.getDuracaoDias(),
+                                ex.getValidadeGuiaDias(),
+                                ex.getFrequenciaMinimaSugerida()
+                        )
+                )
+        );
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

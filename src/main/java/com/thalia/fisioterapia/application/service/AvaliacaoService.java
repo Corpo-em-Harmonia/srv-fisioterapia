@@ -5,13 +5,13 @@ import com.thalia.fisioterapia.domain.avaliacao.Avaliacao;
 import com.thalia.fisioterapia.domain.avaliacao.AvaliacaoStatus;
 import com.thalia.fisioterapia.domain.avaliacao.FichaClinica;
 import com.thalia.fisioterapia.domain.sessao.SessaoStatus;
-import com.thalia.fisioterapia.infra.repository.lead.LeadRepository;
-import com.thalia.fisioterapia.infra.repository.paciente.PacienteRepository;
-import com.thalia.fisioterapia.web.dto.avaliacao.FinalizarAvaliacaoRequest;
-import com.thalia.fisioterapia.infra.repository.avaliacao.AvaliacaoRepository;
-import com.thalia.fisioterapia.infra.repository.sessao.SessaoRepository;
+import com.thalia.fisioterapia.infrastructure.repository.avaliacao.AvaliacaoRepository;
+import com.thalia.fisioterapia.infrastructure.repository.paciente.PacienteRepository;
+import com.thalia.fisioterapia.infrastructure.repository.sessao.SessaoRepository;
+import com.thalia.fisioterapia.infrastructure.repository.lead.LeadRepository;
 import com.thalia.fisioterapia.web.dto.avaliacao.AvaliacaoHistoricoResponse;
 import com.thalia.fisioterapia.web.dto.avaliacao.AvaliacaoPendenteResponse;
+import com.thalia.fisioterapia.web.dto.avaliacao.FinalizarAvaliacaoRequest;
 import org.springframework.stereotype.Service;
 
 import java.util.Comparator;
