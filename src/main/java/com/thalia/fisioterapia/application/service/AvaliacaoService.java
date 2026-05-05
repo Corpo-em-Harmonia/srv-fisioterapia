@@ -9,6 +9,7 @@ import com.thalia.fisioterapia.infrastructure.repository.avaliacao.AvaliacaoRepo
 import com.thalia.fisioterapia.infrastructure.repository.paciente.PacienteRepository;
 import com.thalia.fisioterapia.infrastructure.repository.sessao.SessaoRepository;
 import com.thalia.fisioterapia.infrastructure.repository.lead.LeadRepository;
+import com.thalia.fisioterapia.web.dto.avaliacao.AvaliacaoDetalheResponse;
 import com.thalia.fisioterapia.web.dto.avaliacao.AvaliacaoHistoricoResponse;
 import com.thalia.fisioterapia.web.dto.avaliacao.AvaliacaoPendenteResponse;
 import com.thalia.fisioterapia.web.dto.avaliacao.FinalizarAvaliacaoRequest;
@@ -108,6 +109,30 @@ public class AvaliacaoService {
                     );
                 })
                 .toList();
+    }
+
+    public AvaliacaoDetalheResponse getDetalhe(String id) {
+        Avaliacao av = repository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Avaliação não encontrada"));
+        return new AvaliacaoDetalheResponse(
+                av.getId(),
+                av.getPacienteId(),
+                av.getStatus() != null ? av.getStatus().name().toLowerCase() : null,
+                av.getMedico(),
+                av.getHda(),
+                av.getHpp(),
+                av.getDiagnostico(),
+                av.getTestesRealizados(),
+                av.getGoniometria(),
+                av.getCondutaTerapeutica(),
+                av.getPrognostico(),
+                av.getDesfecho(),
+                av.getComodidade(),
+                av.getMedicamentos(),
+                av.getCirurgia(),
+                av.getCriadaEm() != null ? av.getCriadaEm().toString() : null,
+                av.getFinalizadaEm() != null ? av.getFinalizadaEm().toString() : null
+        );
     }
 
     public List<AvaliacaoHistoricoResponse> listarHistorico() {

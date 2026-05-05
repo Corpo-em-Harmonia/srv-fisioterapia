@@ -30,6 +30,7 @@ public class Sessao {
     private String serieId;
     private Integer numeroOcorrencia;
     private List<SessaoAlteracao> alteracoes;
+    private SessaoEvolucao evolucao;
 
 
 
@@ -117,6 +118,11 @@ public class Sessao {
     }
 
     // ✅ APENAS cancelada bloqueia (conforme acordado)
+    public void registrarEvolucao(SessaoEvolucao evolucao) {
+        this.evolucao = evolucao;
+        this.atualizadoEm = Instant.now();
+    }
+
     private void validarNaoCancelada() {
         if (this.status == SessaoStatus.CANCELADA) {
             throw new IllegalStateException("Sessão cancelada não pode receber ações.");

@@ -5,8 +5,11 @@ import com.thalia.fisioterapia.domain.sessao.Sessao;
 import com.thalia.fisioterapia.domain.sessao.SessaoStatus;
 import com.thalia.fisioterapia.infrastructure.repository.paciente.PacienteRepository;
 import com.thalia.fisioterapia.infrastructure.repository.lead.LeadRepository;
+import com.thalia.fisioterapia.web.dto.avaliacao.IniciarAvaliacaoResponse;
+import com.thalia.fisioterapia.web.dto.sessao.RegistrarEvolucaoRequest;
 import com.thalia.fisioterapia.web.dto.sessao.RemarcarSessaoRequest;
 import com.thalia.fisioterapia.web.dto.sessao.RemarcarSessaoResponse;
+import com.thalia.fisioterapia.web.dto.sessao.SessaoHistoricoResponse;
 import com.thalia.fisioterapia.web.dto.sessao.SessaoResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -104,6 +107,27 @@ public class SessaoController {
     @PatchMapping("/{id}/avaliar")
     public ResponseEntity<SessaoResponse> marcarAvaliada(@PathVariable String id) {
         return ResponseEntity.ok(toResponse(sessaoService.marcarAvaliada(id)));
+    }
+
+    // Converte lead em paciente e cria documento de avaliação
+    @PostMapping("/{id}/converter-lead")
+    public ResponseEntity<IniciarAvaliacaoResponse> converterLead(@PathVariable String id) {
+        return ResponseEntity.ok(sessaoService.converterLeadParaPaciente(id));
+    }
+
+    // Registra evolução de uma sessão de tratamento
+    @PatchMapping("/{id}/evolucao")
+    public ResponseEntity<SessaoResponse> registrarEvolucao(
+            @PathVariable String id,
+            @RequestBody RegistrarEvolucaoRequest req
+    ) {
+        return ResponseEntity.ok(toResponse(sessaoService.registrarEvolucao(id, req)));
+    }
+
+    // Histórico de sessões de um paciente
+    @GetMapping("/historico/{pacienteId}")
+    public ResponseEntity<List<SessaoHistoricoResponse>> historico(@PathVariable String pacienteId) {
+        return ResponseEntity.ok(sessaoService.getHistoricoPaciente(pacienteId));
     }
 
     //  NOVO: Listar aguardando avaliação (para fisio)

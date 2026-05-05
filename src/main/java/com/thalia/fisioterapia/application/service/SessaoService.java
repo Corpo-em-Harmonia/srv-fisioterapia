@@ -3,14 +3,23 @@ package com.thalia.fisioterapia.application.service;
 import com.thalia.fisioterapia.application.exception.AgendaConflictException;
 import com.thalia.fisioterapia.application.exception.BusinessException;
 import com.thalia.fisioterapia.application.exception.ResourceNotFoundException;
+import com.thalia.fisioterapia.domain.avaliacao.Avaliacao;
+import com.thalia.fisioterapia.domain.lead.Lead;
+import com.thalia.fisioterapia.domain.paciente.Paciente;
 import com.thalia.fisioterapia.domain.sessao.EscopoRemarcacao;
 import com.thalia.fisioterapia.domain.sessao.PerfilUsuario;
 import com.thalia.fisioterapia.domain.sessao.Sessao;
 import com.thalia.fisioterapia.domain.sessao.SessaoStatus;
+import com.thalia.fisioterapia.infrastructure.repository.avaliacao.AvaliacaoRepository;
 import com.thalia.fisioterapia.infrastructure.repository.paciente.PacienteRepository;
 import com.thalia.fisioterapia.infrastructure.repository.sessao.SessaoRepository;
 import com.thalia.fisioterapia.infrastructure.repository.lead.LeadRepository;
+import com.thalia.fisioterapia.domain.sessao.SessaoEvolucao;
+import com.thalia.fisioterapia.web.dto.avaliacao.IniciarAvaliacaoResponse;
+import com.thalia.fisioterapia.web.dto.sessao.RegistrarEvolucaoRequest;
+import com.thalia.fisioterapia.web.dto.sessao.SessaoHistoricoResponse;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.DayOfWeek;
@@ -38,18 +47,77 @@ public class SessaoService {
     private static final String USUARIO_SISTEMA = "sistema";
     private static final PerfilUsuario PERFIL_PADRAO = PerfilUsuario.RECEPCAO;
     private static final LocalTime INICIO_ATENDIMENTO = LocalTime.of(8, 0);
-    private static final LocalTime FIM_ATENDIMENTO = LocalTime.of(18, 0);
+    private static final LocalTime FIM_ATENDIMENTO = LocalTime.of(20, 0);
 
     private final SessaoRepository sessaoRepository;
     private final LeadRepository leadRepository;
     private final PacienteRepository pacienteRepository;
+    private final AvaliacaoRepository avaliacaoRepository;
 
     public SessaoService(SessaoRepository sessaoRepository,
                          LeadRepository leadRepository,
-                         PacienteRepository pacienteRepository) {
+                         PacienteRepository pacienteRepository,
+                         AvaliacaoRepository avaliacaoRepository) {
         this.sessaoRepository = sessaoRepository;
         this.leadRepository = leadRepository;
         this.pacienteRepository = pacienteRepository;
+        this.avaliacaoRepository = avaliacaoRepository;
+    }
+
+    public Sessao registrarEvolucao(String id, RegistrarEvolucaoRequest req) {
+        Sessao sessao = getById(id);
+        SessaoEvolucao evolucao = new SessaoEvolucao(
+                req.observacoes(), req.nivelDor(), req.mobilidade(), req.exercicios()
+        );
+        sessao.registrarEvolucao(evolucao);
+        return sessaoRepository.save(sessao);
+    }
+
+    public List<SessaoHistoricoResponse> getHistoricoPaciente(String pacienteId) {
+        return sessaoRepository.findByPacienteIdOrderByDataHoraDesc(pacienteId)
+                .stream()
+                .map(s -> {
+                    SessaoEvolucao ev = s.getEvolucao();
+                    return new SessaoHistoricoResponse(
+                            s.getId(),
+                            s.getNumeroOcorrencia(),
+                            s.getDataHora().toString(),
+                            s.getStatus().name().toLowerCase(),
+                            s.getTipo().name().toLowerCase(),
+                            ev != null ? ev.getObservacoes() : null,
+                            ev != null ? ev.getNivelDor() : null,
+                            ev != null ? ev.getMobilidade() : null,
+                            ev != null ? ev.getExercicios() : List.of()
+                    );
+                })
+                .toList();
+    }
+
+    @Transactional
+    public IniciarAvaliacaoResponse converterLeadParaPaciente(String sessaoId) {
+        Sessao sessao = getById(sessaoId);
+
+        if (sessao.getLeadId() == null) {
+            throw new BusinessException("Sessão já está vinculada a um paciente");
+        }
+
+        Lead lead = leadRepository.findById(sessao.getLeadId())
+                .orElseThrow(() -> new ResourceNotFoundException("Lead não encontrado"));
+
+        Paciente paciente = Paciente.fromLead(lead);
+        paciente = pacienteRepository.save(paciente);
+
+        sessao.setPaciente(paciente.getId());
+        sessaoRepository.save(sessao);
+
+        Avaliacao avaliacao = Avaliacao.criarParaPaciente(paciente.getId());
+        avaliacao = avaliacaoRepository.save(avaliacao);
+
+        String nomeCompleto = paciente.getNome() +
+                (paciente.getSobrenome() != null && !paciente.getSobrenome().isBlank()
+                        ? " " + paciente.getSobrenome() : "");
+
+        return new IniciarAvaliacaoResponse(paciente.getId(), avaliacao.getId(), nomeCompleto.trim());
     }
 
     // NOVO: Recepção marca comparecimento de AVALIAÇÃO
@@ -292,13 +360,15 @@ public class SessaoService {
         }
     }
 
+    private static final int MAX_PACIENTES_POR_HORARIO = 6;
+
     private void validarConflitosAgenda(Instant dataHora, String sessaoAtualId, Set<String> idsDaMesmaOperacao) {
         List<Sessao> conflitos = sessaoRepository.findByDataHoraAndStatusIn(dataHora, STATUS_CONFLITO).stream()
                 .filter(s -> !s.getId().equals(sessaoAtualId))
                 .filter(s -> !idsDaMesmaOperacao.contains(s.getId()))
                 .toList();
 
-        if (conflitos.isEmpty()) {
+        if (conflitos.size() < MAX_PACIENTES_POR_HORARIO) {
             return;
         }
 

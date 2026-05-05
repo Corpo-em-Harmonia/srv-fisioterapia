@@ -41,7 +41,7 @@ public class LeadService {
 
     private static final ZoneId DEFAULT_ZONE = ZoneId.of("America/Sao_Paulo");
     private static final LocalTime INICIO_ATENDIMENTO = LocalTime.of(8, 0);
-    private static final LocalTime FIM_ATENDIMENTO = LocalTime.of(18, 0);
+    private static final LocalTime FIM_ATENDIMENTO = LocalTime.of(20, 0);
     private static final int VALIDADE_GUIA_PADRAO_DIAS = 30;
     private static final List<SessaoStatus> STATUS_CONFLITO = List.of(SessaoStatus.MARCADA, SessaoStatus.REMARCADA, SessaoStatus.AGUARDANDO_AVALIACAO);
 
@@ -151,9 +151,10 @@ public class LeadService {
             Instant dataHoraInstant = dataHoraOcorrencia.atZone(DEFAULT_ZONE).toInstant();
             validarConflitosAgenda(dataHoraInstant);
 
+            SessaoTipo tipoSessao = (i == 0) ? SessaoTipo.AVALIACAO : SessaoTipo.SESSAO;
             Sessao sessao = new Sessao(
                     lead.getId(),
-                    SessaoTipo.AVALIACAO,
+                    tipoSessao,
                     dataHoraInstant,
                     req.observacao()
             );
@@ -185,9 +186,11 @@ public class LeadService {
         }
     }
 
+    private static final int MAX_PACIENTES_POR_HORARIO = 6;
+
     private void validarConflitosAgenda(Instant dataHora) {
         List<Sessao> conflitos = sessaoRepository.findByDataHoraAndStatusIn(dataHora, STATUS_CONFLITO);
-        if (conflitos.isEmpty()) {
+        if (conflitos.size() < MAX_PACIENTES_POR_HORARIO) {
             return;
         }
 

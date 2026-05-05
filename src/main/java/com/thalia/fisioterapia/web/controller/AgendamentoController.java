@@ -14,6 +14,8 @@ import java.util.List;
 @RequestMapping("/api/agendamentos")
 public class AgendamentoController {
 
+    private static final ZoneId ZONE = ZoneId.of("America/Sao_Paulo");
+    private static final int MAX_POR_HORARIO = 6;
 
     private final SessaoRepository sessaoRepository;
 
@@ -22,37 +24,52 @@ public class AgendamentoController {
     }
 
     @GetMapping("/disponibilidade")
-    public ResponseEntity<List<DisponibilidadeResponse>> disponibilidade(@RequestParam("date") LocalDate date) {
+    public ResponseEntity<List<DisponibilidadeResponse>> disponibilidade(
+            @RequestParam("date") LocalDate date,
+            @RequestParam(value = "excludeId", required = false) String excludeId) {
 
-        // Horários fixos (você pode externalizar depois)
         List<LocalTime> horarios = List.of(
                 LocalTime.of(8, 0),
+                LocalTime.of(8, 30),
                 LocalTime.of(9, 0),
+                LocalTime.of(9, 30),
                 LocalTime.of(10, 0),
+                LocalTime.of(10, 30),
                 LocalTime.of(11, 0),
+                LocalTime.of(11, 30),
                 LocalTime.of(13, 0),
+                LocalTime.of(13, 30),
                 LocalTime.of(14, 0),
+                LocalTime.of(14, 30),
                 LocalTime.of(15, 0),
+                LocalTime.of(15, 30),
                 LocalTime.of(16, 0),
-                LocalTime.of(17, 0)
+                LocalTime.of(16, 30),
+                LocalTime.of(17, 0),
+                LocalTime.of(17, 30),
+                LocalTime.of(18, 0),
+                LocalTime.of(18, 30),
+                LocalTime.of(19, 0)
         );
 
-        ZoneId zone = ZoneId.systemDefault();
         List<DisponibilidadeResponse> resp = new ArrayList<>();
 
         for (LocalTime h : horarios) {
-            Instant dataHora = ZonedDateTime.of(date, h, zone).toInstant();
+            Instant dataHora = ZonedDateTime.of(date, h, ZONE).toInstant();
 
-            boolean ocupado = sessaoRepository.existsByDataHoraAndStatusIn(
+            long count = sessaoRepository.findByDataHoraAndStatusIn(
                     dataHora,
-                    List.of(SessaoStatus.MARCADA, SessaoStatus.REMARCADA)
-            );
+                    List.of(SessaoStatus.MARCADA, SessaoStatus.REMARCADA, SessaoStatus.AGUARDANDO_AVALIACAO)
+            ).stream()
+                    .filter(s -> excludeId == null || !excludeId.equals(s.getId()))
+                    .count();
 
-            resp.add(new DisponibilidadeResponse(h.toString(), !ocupado));
+            resp.add(new DisponibilidadeResponse(
+                    String.format("%02d:%02d", h.getHour(), h.getMinute()),
+                    count < MAX_POR_HORARIO
+            ));
         }
 
         return ResponseEntity.ok(resp);
     }
 }
-
-

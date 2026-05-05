@@ -44,14 +44,13 @@ public class Paciente {
 
 
     public static Paciente fromLead(Lead lead) {
-
         Paciente paciente = new Paciente();
-
+        paciente.leadId = lead.getId();
         paciente.nome = lead.getNome();
         paciente.sobrenome = lead.getSobrenome();
         paciente.telefone = lead.getTelefone();
         paciente.email = lead.getEmail();
-
+        paciente.criadoEm = LocalDateTime.now();
         return paciente;
     }
 
