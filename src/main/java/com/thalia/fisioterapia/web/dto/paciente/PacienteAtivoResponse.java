@@ -6,6 +6,7 @@ public record PacienteAtivoResponse(
         String ultimaSessao,
         String proximaSessao,
         long totalSessoes,
+        long sessoesRealizadas,
         String statusClinico
 ) {
 }

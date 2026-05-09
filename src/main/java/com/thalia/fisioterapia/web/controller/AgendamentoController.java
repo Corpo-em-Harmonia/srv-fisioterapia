@@ -52,6 +52,11 @@ public class AgendamentoController {
                 LocalTime.of(19, 0)
         );
 
+        DayOfWeek diaSemana = date.getDayOfWeek();
+        if (diaSemana == DayOfWeek.SATURDAY || diaSemana == DayOfWeek.SUNDAY) {
+            return ResponseEntity.ok(List.of());
+        }
+
         List<DisponibilidadeResponse> resp = new ArrayList<>();
 
         for (LocalTime h : horarios) {
@@ -66,7 +71,7 @@ public class AgendamentoController {
 
             resp.add(new DisponibilidadeResponse(
                     String.format("%02d:%02d", h.getHour(), h.getMinute()),
-                    count < MAX_POR_HORARIO
+                    count < MAX_POR_HORARIO  // disponivel
             ));
         }
 

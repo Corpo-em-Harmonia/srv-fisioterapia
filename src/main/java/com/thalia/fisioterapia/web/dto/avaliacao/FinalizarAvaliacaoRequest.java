@@ -1,16 +1,18 @@
 package com.thalia.fisioterapia.web.dto.avaliacao;
 
+import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
-import lombok.Getter;
 
 @Data
-@Getter
 public class FinalizarAvaliacaoRequest {
 
-    private String leadId;
-
-    private String medico;
+    @NotBlank
     private String avaliacaoId;
+
+    @NotBlank
+    private String medico;
+
+    private String leadId;
     private String hda;
     private String hpp;
     private String diagnostico;
@@ -22,5 +24,4 @@ public class FinalizarAvaliacaoRequest {
     private String comodidade;
     private String medicamentos;
     private String cirurgia;
-
 }

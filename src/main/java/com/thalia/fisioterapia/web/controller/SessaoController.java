@@ -43,7 +43,14 @@ public class SessaoController {
         List<SessaoStatus> statusFiltro = null;
         if (status != null && !status.isEmpty()) {
             statusFiltro = status.stream()
-                    .map(s -> SessaoStatus.valueOf(s.toUpperCase()))
+                    .map(s -> {
+                        try {
+                            return SessaoStatus.valueOf(s.toUpperCase());
+                        } catch (IllegalArgumentException e) {
+                            throw new com.thalia.fisioterapia.application.exception.BusinessException(
+                                    "Status inválido: %s".formatted(s));
+                        }
+                    })
                     .toList();
         }
 
@@ -119,7 +126,7 @@ public class SessaoController {
     @PatchMapping("/{id}/evolucao")
     public ResponseEntity<SessaoResponse> registrarEvolucao(
             @PathVariable String id,
-            @RequestBody RegistrarEvolucaoRequest req
+            @Valid @RequestBody RegistrarEvolucaoRequest req
     ) {
         return ResponseEntity.ok(toResponse(sessaoService.registrarEvolucao(id, req)));
     }
@@ -153,15 +160,16 @@ public class SessaoController {
 
         return new SessaoResponse(
                 s.getId(),
-            s.getLeadId(),
+                s.getLeadId(),
                 s.getPacienteId(),
                 nome,
                 telefone,
                 s.getDataHora().toString(),
                 s.getStatus().name().toLowerCase(),
-            s.getTipo().name().toLowerCase(),
-            s.getSerieId(),
-            s.getNumeroOcorrencia()
+                s.getTipo().name().toLowerCase(),
+                s.getSerieId(),
+                s.getNumeroOcorrencia(),
+                s.getEvolucao()
         );
     }
 }

@@ -6,6 +6,7 @@ import com.thalia.fisioterapia.web.dto.avaliacao.AvaliacaoPendenteResponse;
 import com.thalia.fisioterapia.web.dto.avaliacao.FinalizarAvaliacaoRequest;
 import com.thalia.fisioterapia.web.dto.avaliacao.IniciarAvaliacaoRequest;
 import com.thalia.fisioterapia.application.service.AvaliacaoService;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -22,13 +23,13 @@ public class AvaliacaoController {
     }
 
     @PostMapping("/iniciar")
-    public ResponseEntity<Void> iniciar(@RequestBody IniciarAvaliacaoRequest request) {
+    public ResponseEntity<Void> iniciar(@Valid @RequestBody IniciarAvaliacaoRequest request) {
         avaliacaoService.iniciar(request.getLeadId());
         return ResponseEntity.ok().build();
     }
 
     @PostMapping("/finalizar")
-    public ResponseEntity<Void> finalizar(@RequestBody FinalizarAvaliacaoRequest request) {
+    public ResponseEntity<Void> finalizar(@Valid @RequestBody FinalizarAvaliacaoRequest request) {
         avaliacaoService.finalizar(request);
         return ResponseEntity.ok().build();
     }
@@ -46,5 +47,10 @@ public class AvaliacaoController {
     @GetMapping("/{id}")
     public ResponseEntity<AvaliacaoDetalheResponse> detalhe(@PathVariable String id) {
         return ResponseEntity.ok(avaliacaoService.getDetalhe(id));
+    }
+
+    @GetMapping("/by-paciente/{pacienteId}")
+    public ResponseEntity<AvaliacaoDetalheResponse> detalhePorPaciente(@PathVariable String pacienteId) {
+        return ResponseEntity.ok(avaliacaoService.getDetalheByPaciente(pacienteId));
     }
 }

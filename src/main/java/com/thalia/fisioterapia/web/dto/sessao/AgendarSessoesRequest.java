@@ -1,0 +1,23 @@
+package com.thalia.fisioterapia.web.dto.sessao;
+
+import com.fasterxml.jackson.annotation.JsonFormat;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
+
+import java.time.LocalDateTime;
+import java.util.List;
+
+public record AgendarSessoesRequest(
+        @NotNull
+        @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
+        LocalDateTime dataHora,
+        String avaliacaoId,
+        String observacao,
+        String modoAgendamento,
+        @Min(1) @Max(7) Integer frequenciaSemanal,
+        @Positive Integer quantidadeSessoes,
+        @Positive Integer validadeGuiaDias,
+        List<String> diasSemanaPreferidos
+) {}

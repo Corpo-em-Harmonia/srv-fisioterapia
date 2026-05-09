@@ -117,9 +117,10 @@ public class Sessao {
         registrarAlteracao(SessaoAuditoriaAcao.CANCELAR, null, motivo, usuarioId, perfil);
     }
 
-    // ✅ APENAS cancelada bloqueia (conforme acordado)
     public void registrarEvolucao(SessaoEvolucao evolucao) {
+        validarNaoCancelada();
         this.evolucao = evolucao;
+        this.status = SessaoStatus.REALIZADA;
         this.atualizadoEm = Instant.now();
     }
 

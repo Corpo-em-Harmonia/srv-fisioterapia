@@ -135,6 +135,30 @@ public class AvaliacaoService {
         );
     }
 
+    public AvaliacaoDetalheResponse getDetalheByPaciente(String pacienteId) {
+        Avaliacao av = repository.findFirstByPacienteIdOrderByCriadaEmDesc(pacienteId)
+                .orElseThrow(() -> new ResourceNotFoundException("Avaliação não encontrada para o paciente"));
+        return new AvaliacaoDetalheResponse(
+                av.getId(),
+                av.getPacienteId(),
+                av.getStatus() != null ? av.getStatus().name().toLowerCase() : null,
+                av.getMedico(),
+                av.getHda(),
+                av.getHpp(),
+                av.getDiagnostico(),
+                av.getTestesRealizados(),
+                av.getGoniometria(),
+                av.getCondutaTerapeutica(),
+                av.getPrognostico(),
+                av.getDesfecho(),
+                av.getComodidade(),
+                av.getMedicamentos(),
+                av.getCirurgia(),
+                av.getCriadaEm() != null ? av.getCriadaEm().toString() : null,
+                av.getFinalizadaEm() != null ? av.getFinalizadaEm().toString() : null
+        );
+    }
+
     public List<AvaliacaoHistoricoResponse> listarHistorico() {
         return repository.findAll().stream()
                 .filter(avaliacao -> avaliacao.getStatus() == AvaliacaoStatus.FINALIZADA)

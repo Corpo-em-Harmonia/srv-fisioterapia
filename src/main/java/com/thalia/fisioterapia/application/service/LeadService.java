@@ -20,6 +20,7 @@ import com.thalia.fisioterapia.web.dto.agenda.AgendarAvaliacaoRequest;
 import com.thalia.fisioterapia.web.dto.agenda.AgendarAvaliacaoResponse;
 import com.thalia.fisioterapia.web.dto.lead.CriarLeadRequest;
 import com.thalia.fisioterapia.web.dto.lead.LeadResponse;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,6 +37,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
+@Slf4j
 @Service
 public class LeadService {
 
@@ -72,6 +74,7 @@ public class LeadService {
                 request.getObservacao()
         );
         Lead saved = leadRepository.save(lead);
+        log.info("Lead criado [id={}] email={}", saved.getId(), saved.getEmail());
         return toResponse(saved);
     }
 
@@ -92,6 +95,7 @@ public class LeadService {
     @Transactional
     public Lead executarAcaoSimples(String leadId, LeadAcao acao) {
         Lead lead = buscarLead(leadId);
+        log.debug("Executando ação {} para lead [{}]", acao, leadId);
 
         switch (acao) {
             case REGISTRAR_CONTATO -> lead.registrarContato();
@@ -104,6 +108,7 @@ public class LeadService {
 
     @Transactional
     public AgendarAvaliacaoResponse agendarAvaliacao(String leadId, AgendarAvaliacaoRequest req) {
+        log.info("Agendando avaliação para lead [{}] modo={}", leadId, req.modoAgendamento());
         Lead lead = buscarLead(leadId);
         ModoAgendamento modoAgendamento = parseModoAgendamento(req.modoAgendamento());
 
@@ -225,7 +230,7 @@ public class LeadService {
         try {
             return ModoAgendamento.fromNullable(modoAgendamento);
         } catch (IllegalArgumentException ex) {
-            throw new BusinessException("modoAgendamento invalido: " + modoAgendamento);
+            throw new BusinessException("modoAgendamento invalido: %s".formatted(modoAgendamento));
         }
     }
 

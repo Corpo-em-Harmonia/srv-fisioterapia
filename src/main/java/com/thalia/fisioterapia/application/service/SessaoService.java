@@ -36,6 +36,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 @Service
 public class SessaoService {
 
@@ -87,7 +90,8 @@ public class SessaoService {
                             ev != null ? ev.getObservacoes() : null,
                             ev != null ? ev.getNivelDor() : null,
                             ev != null ? ev.getMobilidade() : null,
-                            ev != null ? ev.getExercicios() : List.of()
+                            ev != null ? ev.getExercicios() : List.of(),
+                            s.getAvaliacaoId()
                     );
                 })
                 .toList();
@@ -178,7 +182,7 @@ public class SessaoService {
                         .toInstant();
             }
 
-            default -> throw new BusinessException("Período inválido: " + periodo);
+            default -> throw new BusinessException("Período inválido: %s".formatted(periodo));
         }
 
         if (statusFiltro != null && !statusFiltro.isEmpty()) {
@@ -328,7 +332,7 @@ public class SessaoService {
         try {
             return EscopoRemarcacao.fromNullable(escopoRaw);
         } catch (IllegalArgumentException ex) {
-            throw new BusinessException("escopo invalido: " + escopoRaw);
+            throw new BusinessException("escopo invalido: %s".formatted(escopoRaw));
         }
     }
 
@@ -353,10 +357,17 @@ public class SessaoService {
                 .toList();
     }
 
+    private static final ZoneId ZONE_SP = ZoneId.of("America/Sao_Paulo");
+
     private void validarJanelaAtendimento(Instant dataHora) {
-        LocalTime horario = dataHora.atZone(ZoneId.systemDefault()).toLocalTime();
+        ZonedDateTime zdt = dataHora.atZone(ZONE_SP);
+        DayOfWeek dia = zdt.getDayOfWeek();
+        if (dia == DayOfWeek.SATURDAY || dia == DayOfWeek.SUNDAY) {
+            throw new BusinessException("Não é permitido remarcar sessões para fins de semana");
+        }
+        LocalTime horario = zdt.toLocalTime();
         if (horario.isBefore(INICIO_ATENDIMENTO) || !horario.isBefore(FIM_ATENDIMENTO)) {
-            throw new BusinessException("Horario fora da janela de atendimento");
+            throw new BusinessException("Horario fora da janela de atendimento (08h-20h)");
         }
     }
 

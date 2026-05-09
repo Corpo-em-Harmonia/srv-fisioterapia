@@ -4,8 +4,9 @@ public enum SessaoStatus {
     MARCADA,
     REMARCADA,
     COMPARECEU,
-    AGUARDANDO_AVALIACAO, // ✅ Compareceu, esperando fisio avaliar
-    AVALIADA,             // ✅ Fisio concluiu avaliação
+    AGUARDANDO_AVALIACAO,
+    AVALIADA,
+    REALIZADA,            // Sessão concluída com evolução registrada pelo fisio
     FALTOU,
     CANCELADA
 }

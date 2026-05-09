@@ -4,6 +4,7 @@ import com.thalia.fisioterapia.application.exception.BusinessException;
 import com.thalia.fisioterapia.application.exception.AgendaConflictException;
 import com.thalia.fisioterapia.application.exception.PlanoForaValidadeException;
 import com.thalia.fisioterapia.application.exception.ResourceNotFoundException;
+import org.springframework.security.authentication.DisabledException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -70,6 +71,11 @@ public class ApiExceptionHandler {
                 .map(fieldError -> fieldError.getField() + ": " + fieldError.getDefaultMessage())
                 .orElse("Dados de entrada inválidos");
         return buildResponse(HttpStatus.BAD_REQUEST, message);
+    }
+
+    @ExceptionHandler(DisabledException.class)
+    public ResponseEntity<ApiErrorResponse> handleDisabled(DisabledException ex) {
+        return buildResponse(HttpStatus.FORBIDDEN, "Usuário inativo. Entre em contato com o administrador.");
     }
 
     @ExceptionHandler(IllegalStateException.class)

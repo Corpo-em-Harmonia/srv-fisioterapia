@@ -32,6 +32,9 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 @Service
 public class PacienteService {
 
@@ -83,12 +86,19 @@ public class PacienteService {
                             })
                             .orElse("sem_avaliacao");
 
+                    long sessoesRealizadas = sessoes.stream()
+                            .filter(s -> s.getStatus() == SessaoStatus.REALIZADA
+                                    || s.getStatus() == SessaoStatus.COMPARECEU
+                                    || s.getStatus() == SessaoStatus.AVALIADA)
+                            .count();
+
                     return new PacienteAtivoResponse(
                             paciente.getId(),
                             nomeCompleto(paciente),
                             ultimaSessao != null ? ultimaSessao.toString() : null,
                             proximaSessao != null ? proximaSessao.toString() : null,
                             sessoes.size(),
+                            sessoesRealizadas,
                             statusClinico
                     );
                 })
@@ -146,6 +156,10 @@ public class PacienteService {
     }
 
     private void validarJanela(LocalDateTime dataHora) {
+        DayOfWeek dia = dataHora.getDayOfWeek();
+        if (dia == DayOfWeek.SATURDAY || dia == DayOfWeek.SUNDAY) {
+            throw new BusinessException("Não é permitido agendar sessões nos fins de semana");
+        }
         LocalTime horario = dataHora.toLocalTime();
         if (horario.isBefore(INICIO_ATENDIMENTO) || !horario.isBefore(FIM_ATENDIMENTO)) {
             throw new BusinessException("Horário fora da janela de atendimento (08h-20h)");
@@ -181,7 +195,7 @@ public class PacienteService {
         try {
             return ModoAgendamento.fromNullable(modo);
         } catch (IllegalArgumentException ex) {
-            throw new BusinessException("modoAgendamento inválido: " + modo);
+            throw new BusinessException("modoAgendamento inválido: %s".formatted(modo));
         }
     }
 

@@ -1,5 +1,7 @@
 package com.thalia.fisioterapia.web.dto.sessao;
 
+import com.thalia.fisioterapia.domain.sessao.SessaoEvolucao;
+
 public record SessaoResponse(
         String id,
         String leadId,
@@ -10,5 +12,6 @@ public record SessaoResponse(
         String status,
         String tipo,
         String serieId,
-        Integer numeroOcorrencia
+        Integer numeroOcorrencia,
+        SessaoEvolucao evolucao
 ) {}
