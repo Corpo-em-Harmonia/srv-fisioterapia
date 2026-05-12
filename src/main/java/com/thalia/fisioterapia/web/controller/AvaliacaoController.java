@@ -49,6 +49,13 @@ public class AvaliacaoController {
         return ResponseEntity.ok(avaliacaoService.getDetalhe(id));
     }
 
+    @PatchMapping("/{id}")
+    public ResponseEntity<AvaliacaoDetalheResponse> atualizar(
+            @PathVariable String id,
+            @RequestBody FinalizarAvaliacaoRequest request) {
+        return ResponseEntity.ok(avaliacaoService.atualizar(id, request));
+    }
+
     @GetMapping("/by-paciente/{pacienteId}")
     public ResponseEntity<AvaliacaoDetalheResponse> detalhePorPaciente(@PathVariable String pacienteId) {
         return ResponseEntity.ok(avaliacaoService.getDetalheByPaciente(pacienteId));

@@ -86,6 +86,10 @@ public class LeadService {
                 .toList();
     }
 
+    public java.util.Optional<LeadResponse> buscarPorEmail(String email) {
+        return leadRepository.findByEmail(email).map(this::toResponse);
+    }
+
     public List<LeadResponse> listarAtivos() {
         return leadRepository.findByStatusIn(List.of(LeadStatus.NOVO, LeadStatus.CONTATADO))
                 .stream()
@@ -185,9 +189,13 @@ public class LeadService {
     }
 
     private void validarJanelaAtendimento(LocalDateTime dataHora) {
+        DayOfWeek dia = dataHora.getDayOfWeek();
+        if (dia == DayOfWeek.SATURDAY || dia == DayOfWeek.SUNDAY) {
+            throw new BusinessException("Não é permitido agendar sessões nos fins de semana");
+        }
         LocalTime horario = dataHora.toLocalTime();
         if (horario.isBefore(INICIO_ATENDIMENTO) || !horario.isBefore(FIM_ATENDIMENTO)) {
-            throw new BusinessException("Horario fora da janela de atendimento");
+            throw new BusinessException("Horário fora da janela de atendimento (08h–20h)");
         }
     }
 

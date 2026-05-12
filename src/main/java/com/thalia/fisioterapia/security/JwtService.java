@@ -31,14 +31,20 @@ public class JwtService {
         this.expirationSeconds = expirationSeconds;
     }
 
+    private static final String ISSUER   = "fisioterapia-api";
+    private static final String AUDIENCE = "fisioterapia-client";
+
     public String generateToken(String email, String role, String nome) {
-        Date now   = new Date();
+        Date now    = new Date();
         Date expiry = new Date(now.getTime() + expirationSeconds * 1000L);
         return Jwts.builder()
+                .issuer(ISSUER)
+                .audience().add(AUDIENCE).and()
                 .subject(email)
                 .claim("role", role)
                 .claim("nome", nome)
                 .issuedAt(now)
+                .notBefore(now)
                 .expiration(expiry)
                 .signWith(key)
                 .compact();
@@ -47,6 +53,7 @@ public class JwtService {
     public Claims parseToken(String token) {
         return Jwts.parser()
                 .verifyWith(key)
+                .requireIssuer(ISSUER)
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();

@@ -4,6 +4,7 @@ import com.thalia.fisioterapia.application.exception.BusinessException;
 import com.thalia.fisioterapia.application.exception.ResourceNotFoundException;
 import com.thalia.fisioterapia.domain.usuario.Usuario;
 import com.thalia.fisioterapia.infrastructure.repository.usuario.UsuarioRepository;
+import com.thalia.fisioterapia.domain.usuario.Role;
 import com.thalia.fisioterapia.web.dto.usuario.AtualizarUsuarioRequest;
 import com.thalia.fisioterapia.web.dto.usuario.CriarUsuarioRequest;
 import com.thalia.fisioterapia.web.dto.usuario.ResetSenhaRequest;
@@ -13,6 +14,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.security.SecureRandom;
+import java.util.Base64;
 import java.util.List;
 
 @Slf4j
@@ -62,6 +65,24 @@ public class UsuarioService {
         Usuario saved = usuarioRepository.save(usuario);
         log.info("Usuário [{}] atualizado por admin", saved.getEmail());
         return toResponse(saved);
+    }
+
+    public void criarParaPacienteSeNaoExistir(String nome, String sobrenome, String email, String telefone) {
+        if (email == null || email.isBlank() || email.contains(".temp")) return;
+        if (usuarioRepository.existsByEmail(email)) return;
+
+        String nomeCompleto = (nome + (sobrenome != null && !sobrenome.isBlank() ? " " + sobrenome : "")).trim();
+        String senhaInicial = gerarSenhaAleatoria();
+
+        var usuario = new Usuario(nomeCompleto, email, passwordEncoder.encode(senhaInicial), Role.PACIENTE);
+        usuarioRepository.save(usuario);
+        log.info("Usuário criado para paciente: email={} — admin deve definir senha via reset-senha", email);
+    }
+
+    private String gerarSenhaAleatoria() {
+        byte[] bytes = new byte[18];
+        new SecureRandom().nextBytes(bytes);
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
     }
 
     public void resetSenha(String id, ResetSenhaRequest request) {

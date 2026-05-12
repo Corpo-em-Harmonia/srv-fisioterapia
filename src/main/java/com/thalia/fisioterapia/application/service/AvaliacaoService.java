@@ -49,28 +49,40 @@ public class AvaliacaoService {
     }
 
     public void finalizar(FinalizarAvaliacaoRequest request){
-
         Avaliacao avaliacao = repository.findById(request.getAvaliacaoId())
                 .orElseThrow(() -> new ResourceNotFoundException("Avaliação não encontrada"));
-
-        FichaClinica ficha = new FichaClinica(
-                request.getMedico(),
-                request.getHda(),
-                request.getHpp(),
-                request.getDiagnostico(),
-                request.getTestesRealizados(),
-                request.getGoniometria(),
-                request.getCondutaTerapeutica(),
-                request.getPrognostico(),
-                request.getDesfecho(),
-                request.getComodidade(),
-                request.getMedicamentos(),
-                request.getCirurgia()
-        );
-
-        avaliacao.finalizar(ficha);
-
+        avaliacao.finalizar(fichaFrom(request));
         repository.save(avaliacao);
+    }
+
+    public AvaliacaoDetalheResponse atualizar(String id, FinalizarAvaliacaoRequest request) {
+        Avaliacao avaliacao = repository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Avaliação não encontrada"));
+        avaliacao.atualizar(fichaFrom(request));
+        Avaliacao salva = repository.save(avaliacao);
+        return toDetalheResponse(salva);
+    }
+
+    private FichaClinica fichaFrom(FinalizarAvaliacaoRequest r) {
+        return new FichaClinica(
+                r.getMedico(), r.getHda(), r.getHpp(), r.getDiagnostico(),
+                r.getTestesRealizados(), r.getGoniometria(), r.getCondutaTerapeutica(),
+                r.getPrognostico(), r.getDesfecho(), r.getComodidade(),
+                r.getMedicamentos(), r.getCirurgia()
+        );
+    }
+
+    private AvaliacaoDetalheResponse toDetalheResponse(Avaliacao av) {
+        return new AvaliacaoDetalheResponse(
+                av.getId(), av.getPacienteId(),
+                av.getStatus() != null ? av.getStatus().name().toLowerCase() : null,
+                av.getMedico(), av.getHda(), av.getHpp(), av.getDiagnostico(),
+                av.getTestesRealizados(), av.getGoniometria(), av.getCondutaTerapeutica(),
+                av.getPrognostico(), av.getDesfecho(), av.getComodidade(),
+                av.getMedicamentos(), av.getCirurgia(),
+                av.getCriadaEm() != null ? av.getCriadaEm().toString() : null,
+                av.getFinalizadaEm() != null ? av.getFinalizadaEm().toString() : null
+        );
     }
 
     public List<AvaliacaoPendenteResponse> listarPendentes() {
@@ -112,27 +124,8 @@ public class AvaliacaoService {
     }
 
     public AvaliacaoDetalheResponse getDetalhe(String id) {
-        Avaliacao av = repository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Avaliação não encontrada"));
-        return new AvaliacaoDetalheResponse(
-                av.getId(),
-                av.getPacienteId(),
-                av.getStatus() != null ? av.getStatus().name().toLowerCase() : null,
-                av.getMedico(),
-                av.getHda(),
-                av.getHpp(),
-                av.getDiagnostico(),
-                av.getTestesRealizados(),
-                av.getGoniometria(),
-                av.getCondutaTerapeutica(),
-                av.getPrognostico(),
-                av.getDesfecho(),
-                av.getComodidade(),
-                av.getMedicamentos(),
-                av.getCirurgia(),
-                av.getCriadaEm() != null ? av.getCriadaEm().toString() : null,
-                av.getFinalizadaEm() != null ? av.getFinalizadaEm().toString() : null
-        );
+        return toDetalheResponse(repository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Avaliação não encontrada")));
     }
 
     public AvaliacaoDetalheResponse getDetalheByPaciente(String pacienteId) {

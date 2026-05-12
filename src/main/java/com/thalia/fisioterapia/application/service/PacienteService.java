@@ -16,6 +16,9 @@ import com.thalia.fisioterapia.infrastructure.repository.sessao.SessaoRepository
 import com.thalia.fisioterapia.web.dto.paciente.PacienteAtivoResponse;
 import com.thalia.fisioterapia.web.dto.sessao.AgendarSessoesRequest;
 import com.thalia.fisioterapia.web.dto.sessao.AgendarSessoesResponse;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -60,10 +63,11 @@ public class PacienteService {
         this.avaliacaoRepository = avaliacaoRepository;
     }
 
-    public List<PacienteAtivoResponse> listarAtivos() {
+    public Page<PacienteAtivoResponse> listarAtivos(Pageable pageable) {
         Instant agora = Instant.now();
+        Page<Paciente> pagina = pacienteRepository.findAll(pageable);
 
-        return pacienteRepository.findAll().stream()
+        List<PacienteAtivoResponse> content = pagina.getContent().stream()
                 .map(paciente -> {
                     var sessoes = sessaoRepository.findByPacienteIdOrderByDataHoraAsc(paciente.getId());
 
@@ -79,11 +83,10 @@ public class PacienteService {
                             .findFirst()
                             .orElse(null);
 
-                    String statusClinico = avaliacaoRepository.findFirstByPacienteIdOrderByCriadaEmDesc(paciente.getId())
-                            .map(avaliacao -> {
-                                AvaliacaoStatus status = avaliacao.getStatus();
-                                return status != null ? status.name().toLowerCase() : "sem_avaliacao";
-                            })
+                    String statusClinico = avaliacaoRepository
+                            .findFirstByPacienteIdOrderByCriadaEmDesc(paciente.getId())
+                            .map(av -> av.getStatus() != null
+                                    ? av.getStatus().name().toLowerCase() : "sem_avaliacao")
                             .orElse("sem_avaliacao");
 
                     long sessoesRealizadas = sessoes.stream()
@@ -103,6 +106,8 @@ public class PacienteService {
                     );
                 })
                 .toList();
+
+        return new PageImpl<>(content, pageable, pagina.getTotalElements());
     }
 
     @Transactional

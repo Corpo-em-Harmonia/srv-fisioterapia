@@ -57,25 +57,35 @@ public class Avaliacao {
 
     // finalização
     public void finalizar(FichaClinica ficha){
-
         if(this.status != AvaliacaoStatus.EM_ATENDIMENTO){
             throw new IllegalStateException("Atendimento não iniciado");
         }
-
-        this.medico = ficha.medico();
-        this.hda = ficha.hda();
-        this.hpp = ficha.hpp();
-        this.diagnostico = ficha.diagnostico();
-        this.testesRealizados = ficha.testesRealizados();
-        this.goniometria = ficha.goniometria();
-        this.condutaTerapeutica = ficha.condutaTerapeutica();
-        this.prognostico = ficha.prognostico();
-        this.desfecho = ficha.desfecho();
-        this.comodidade = ficha.comodidade();
-        this.medicamentos = ficha.medicamentos();
-        this.cirurgia = ficha.cirurgia();
-
+        aplicarFicha(ficha);
         this.status = AvaliacaoStatus.FINALIZADA;
         this.finalizadaEm = LocalDateTime.now();
+    }
+
+    // edição após finalização — permite corrigir dados da ficha clínica
+    public void atualizar(FichaClinica ficha){
+        if(this.status == AvaliacaoStatus.AGUARDANDO){
+            throw new IllegalStateException("Avaliação ainda não foi realizada");
+        }
+        aplicarFicha(ficha);
+        this.finalizadaEm = LocalDateTime.now();
+    }
+
+    private void aplicarFicha(FichaClinica ficha){
+        this.medico             = ficha.medico();
+        this.hda                = ficha.hda();
+        this.hpp                = ficha.hpp();
+        this.diagnostico        = ficha.diagnostico();
+        this.testesRealizados   = ficha.testesRealizados();
+        this.goniometria        = ficha.goniometria();
+        this.condutaTerapeutica = ficha.condutaTerapeutica();
+        this.prognostico        = ficha.prognostico();
+        this.desfecho           = ficha.desfecho();
+        this.comodidade         = ficha.comodidade();
+        this.medicamentos       = ficha.medicamentos();
+        this.cirurgia           = ficha.cirurgia();
     }
 }

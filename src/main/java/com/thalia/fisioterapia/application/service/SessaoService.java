@@ -16,17 +16,13 @@ import com.thalia.fisioterapia.infrastructure.repository.sessao.SessaoRepository
 import com.thalia.fisioterapia.infrastructure.repository.lead.LeadRepository;
 import com.thalia.fisioterapia.domain.sessao.SessaoEvolucao;
 import com.thalia.fisioterapia.web.dto.avaliacao.IniciarAvaliacaoResponse;
+import org.springframework.context.annotation.Lazy;
 import com.thalia.fisioterapia.web.dto.sessao.RegistrarEvolucaoRequest;
 import com.thalia.fisioterapia.web.dto.sessao.SessaoHistoricoResponse;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Duration;
-import java.time.DayOfWeek;
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.LocalTime;
-import java.time.ZoneId;
+import java.time.*;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
@@ -56,15 +52,18 @@ public class SessaoService {
     private final LeadRepository leadRepository;
     private final PacienteRepository pacienteRepository;
     private final AvaliacaoRepository avaliacaoRepository;
+    private final UsuarioService usuarioService;
 
     public SessaoService(SessaoRepository sessaoRepository,
                          LeadRepository leadRepository,
                          PacienteRepository pacienteRepository,
-                         AvaliacaoRepository avaliacaoRepository) {
+                         AvaliacaoRepository avaliacaoRepository,
+                         @Lazy UsuarioService usuarioService) {
         this.sessaoRepository = sessaoRepository;
         this.leadRepository = leadRepository;
         this.pacienteRepository = pacienteRepository;
         this.avaliacaoRepository = avaliacaoRepository;
+        this.usuarioService = usuarioService;
     }
 
     public Sessao registrarEvolucao(String id, RegistrarEvolucaoRequest req) {
@@ -113,6 +112,10 @@ public class SessaoService {
 
         sessao.setPaciente(paciente.getId());
         sessaoRepository.save(sessao);
+
+        usuarioService.criarParaPacienteSeNaoExistir(
+                paciente.getNome(), paciente.getSobrenome(), lead.getEmail(), lead.getTelefone()
+        );
 
         Avaliacao avaliacao = Avaliacao.criarParaPaciente(paciente.getId());
         avaliacao = avaliacaoRepository.save(avaliacao);

@@ -59,6 +59,13 @@ public class LeadController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
+    @GetMapping("/buscar-email")
+    public ResponseEntity<LeadResponse> buscarPorEmail(@RequestParam String email) {
+        return leadService.buscarPorEmail(email)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deletarLead(@PathVariable String id) {
         leadService.deletarLead(id);

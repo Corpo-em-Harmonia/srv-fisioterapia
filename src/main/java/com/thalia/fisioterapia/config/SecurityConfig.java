@@ -12,6 +12,7 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.core.env.Environment;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.DelegatingPasswordEncoder;
 import org.springframework.security.crypto.factory.PasswordEncoderFactories;
@@ -30,21 +31,31 @@ import java.util.List;
 @EnableMethodSecurity
 public class SecurityConfig {
 
+    private final Environment environment;
+
+    public SecurityConfig(Environment environment) {
+        this.environment = environment;
+    }
+
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http,
                                            CorsConfigurationSource corsConfigurationSource,
                                            JwtAuthFilter jwtAuthFilter) throws Exception {
+        boolean isProd = Arrays.asList(environment.getActiveProfiles()).contains("prod");
+
         http
                 .csrf(csrf -> csrf.disable())
                 .cors(cors -> cors.configurationSource(corsConfigurationSource))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers("/api/auth/**").permitAll()
-                        .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
-                        .requestMatchers("/api/**").authenticated()
-                        .anyRequest().denyAll()
-                )
+                .authorizeHttpRequests(auth -> {
+                    auth.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll();
+                    auth.requestMatchers("/api/auth/**").permitAll();
+                    if (!isProd) {
+                        auth.requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll();
+                    }
+                    auth.requestMatchers("/api/**").authenticated();
+                    auth.anyRequest().denyAll();
+                })
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint((req, res, e) ->
                                 res.sendError(HttpStatus.UNAUTHORIZED.value(), "Não autenticado"))
@@ -64,10 +75,10 @@ public class SecurityConfig {
 
     @Bean
     public PasswordEncoder passwordEncoder() {
+        BCryptPasswordEncoder bcrypt = new BCryptPasswordEncoder(12);
         DelegatingPasswordEncoder encoder =
                 (DelegatingPasswordEncoder) PasswordEncoderFactories.createDelegatingPasswordEncoder();
-        // Fallback para senhas salvas sem prefixo {bcrypt} (documentos antigos no banco)
-        encoder.setDefaultPasswordEncoderForMatches(new BCryptPasswordEncoder());
+        encoder.setDefaultPasswordEncoderForMatches(bcrypt);
         return encoder;
     }
 

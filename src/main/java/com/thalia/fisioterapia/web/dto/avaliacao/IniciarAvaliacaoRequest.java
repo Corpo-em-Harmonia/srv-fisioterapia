@@ -1,13 +1,11 @@
 package com.thalia.fisioterapia.web.dto.avaliacao;
 
+import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 
 @Data
 public class IniciarAvaliacaoRequest {
 
-    private String leadId;
-    private String medico;
-
-
-    // getters restantes
+    @NotBlank(message = "ID da avaliação é obrigatório")
+    private String leadId; // representa o avaliacaoId — nome mantido por compatibilidade com frontend
 }

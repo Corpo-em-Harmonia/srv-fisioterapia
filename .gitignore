@@ -35,3 +35,12 @@ build/
 ### Logs ###
 *.log
 logs/
+
+### Credenciais geradas localmente — nunca commitar ###
+admin-credentials.txt
+.env
+.env.local
+.env.*
+
+### Documentação local — não subir ###
+*.md
