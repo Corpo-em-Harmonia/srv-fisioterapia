@@ -7,7 +7,6 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
 public record AgendarAvaliacaoRequest(
         @NotNull
@@ -17,6 +16,5 @@ public record AgendarAvaliacaoRequest(
         String modoAgendamento,
         @Min(1) @Max(7) Integer frequenciaSemanal,
         @Positive Integer quantidadeSessoes,
-        @Positive Integer validadeGuiaDias,
-        List<String> diasSemanaPreferidos
+        @Positive Integer validadeGuiaDias
 ) {}

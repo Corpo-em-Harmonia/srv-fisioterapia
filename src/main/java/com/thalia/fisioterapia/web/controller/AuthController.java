@@ -1,5 +1,6 @@
 package com.thalia.fisioterapia.web.controller;
 
+import com.thalia.fisioterapia.domain.usuario.Usuario;
 import com.thalia.fisioterapia.infrastructure.repository.usuario.UsuarioRepository;
 import com.thalia.fisioterapia.security.JwtService;
 import com.thalia.fisioterapia.security.LoginAttemptService;
@@ -56,7 +57,7 @@ public class AuthController {
                     .orElse("RECEPCIONISTA");
 
             String nome = usuarioRepository.findByEmail(request.email())
-                    .map(u -> u.getNome())
+                    .map(Usuario::getNome)
                     .orElse(request.email());
 
             loginAttemptService.registrarSucesso(ip);

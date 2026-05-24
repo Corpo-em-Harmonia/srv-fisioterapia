@@ -11,42 +11,35 @@ import com.thalia.fisioterapia.domain.sessao.PerfilUsuario;
 import com.thalia.fisioterapia.domain.sessao.Sessao;
 import com.thalia.fisioterapia.domain.sessao.SessaoStatus;
 import com.thalia.fisioterapia.infrastructure.repository.avaliacao.AvaliacaoRepository;
+import com.thalia.fisioterapia.infrastructure.repository.lead.LeadRepository;
 import com.thalia.fisioterapia.infrastructure.repository.paciente.PacienteRepository;
 import com.thalia.fisioterapia.infrastructure.repository.sessao.SessaoRepository;
-import com.thalia.fisioterapia.infrastructure.repository.lead.LeadRepository;
 import com.thalia.fisioterapia.domain.sessao.SessaoEvolucao;
 import com.thalia.fisioterapia.web.dto.avaliacao.IniciarAvaliacaoResponse;
-import org.springframework.context.annotation.Lazy;
 import com.thalia.fisioterapia.web.dto.sessao.RegistrarEvolucaoRequest;
 import com.thalia.fisioterapia.web.dto.sessao.SessaoHistoricoResponse;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.*;
-import java.util.ArrayList;
-import java.util.Collection;
+import java.time.DayOfWeek;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDate;
 import java.util.Comparator;
-import java.util.HashSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
-import lombok.extern.slf4j.Slf4j;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
 public class SessaoService {
 
-    private static final List<SessaoStatus> STATUS_CONFLITO = List.of(
-            SessaoStatus.MARCADA,
-            SessaoStatus.REMARCADA,
-            SessaoStatus.AGUARDANDO_AVALIACAO
-    );
     private static final String USUARIO_SISTEMA = "sistema";
     private static final PerfilUsuario PERFIL_PADRAO = PerfilUsuario.RECEPCAO;
-    private static final LocalTime INICIO_ATENDIMENTO = LocalTime.of(8, 0);
-    private static final LocalTime FIM_ATENDIMENTO = LocalTime.of(20, 0);
 
     private final SessaoRepository sessaoRepository;
     private final LeadRepository leadRepository;
@@ -127,64 +120,54 @@ public class SessaoService {
         return new IniciarAvaliacaoResponse(paciente.getId(), avaliacao.getId(), nomeCompleto.trim());
     }
 
-    // NOVO: Recepção marca comparecimento de AVALIAÇÃO
     public Sessao marcarCompareceuAvaliacao(String id) {
         Sessao s = getById(id);
-        s.marcarComparecimentoAvaliacao(); // Vai para AGUARDANDO_AVALIACAO
+        s.marcarComparecimentoAvaliacao();
         Sessao salva = sessaoRepository.save(s);
         incrementarComparecimentos(salva);
         return salva;
     }
 
-    //  NOVO: Fisio marca que fez a avaliação
     public Sessao marcarAvaliada(String id) {
         Sessao s = getById(id);
-        s.marcarAvaliada(); // Vai para AVALIADA
+        s.marcarAvaliada();
         return sessaoRepository.save(s);
     }
 
-    // Lista sessões de um dia específico
     public List<Sessao> listarPorDia(LocalDate dia) {
-        Instant start = dia.atStartOfDay(ZoneId.systemDefault()).toInstant();
-        Instant end = dia.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant();
+        Instant start = dia.atStartOfDay(AgendaUtil.ZONE_SP).toInstant();
+        Instant end = dia.plusDays(1).atStartOfDay(AgendaUtil.ZONE_SP).toInstant();
         return sessaoRepository.findByDataHoraBetweenOrderByDataHoraAsc(start, end);
     }
 
-    // Lista sessões pendentes (hoje + atrasadas não confirmadas)
     public List<Sessao> listarPendentes() {
-        Instant agora = Instant.now();
-        return sessaoRepository.findPendentes(agora);
+        return sessaoRepository.findPendentes(Instant.now());
     }
 
-    // Lista sessões por período (hoje, semana, mês, pendentes)
     public List<Sessao> listarPorPeriodo(String periodo, List<SessaoStatus> statusFiltro) {
         LocalDate hoje = LocalDate.now();
         Instant start, end;
 
         switch (periodo.toLowerCase()) {
             case "hoje" -> {
-                start = hoje.atStartOfDay(ZoneId.systemDefault()).toInstant();
-                end = hoje.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant();
+                start = hoje.atStartOfDay(AgendaUtil.ZONE_SP).toInstant();
+                end = hoje.plusDays(1).atStartOfDay(AgendaUtil.ZONE_SP).toInstant();
             }
             case "semana" -> {
-                start = hoje.with(DayOfWeek.MONDAY).atStartOfDay(ZoneId.systemDefault()).toInstant();
-                end = hoje.with(DayOfWeek.SUNDAY).plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant();
+                start = hoje.with(DayOfWeek.MONDAY).atStartOfDay(AgendaUtil.ZONE_SP).toInstant();
+                end = hoje.with(DayOfWeek.SUNDAY).plusDays(1).atStartOfDay(AgendaUtil.ZONE_SP).toInstant();
             }
             case "mes" -> {
-                start = hoje.withDayOfMonth(1).atStartOfDay(ZoneId.systemDefault()).toInstant();
-                end = hoje.plusMonths(1).withDayOfMonth(1).atStartOfDay(ZoneId.systemDefault()).toInstant();
+                start = hoje.withDayOfMonth(1).atStartOfDay(AgendaUtil.ZONE_SP).toInstant();
+                end = hoje.plusMonths(1).withDayOfMonth(1).atStartOfDay(AgendaUtil.ZONE_SP).toInstant();
             }
             case "pendentes" -> {
                 return listarPendentes();
             }
-
             case "todos" -> {
                 start = Instant.EPOCH;
-                end = LocalDate.now().plusYears(100)
-                        .atStartOfDay(ZoneId.systemDefault())
-                        .toInstant();
+                end = LocalDate.now().plusYears(100).atStartOfDay(AgendaUtil.ZONE_SP).toInstant();
             }
-
             default -> throw new BusinessException("Período inválido: %s".formatted(periodo));
         }
 
@@ -194,20 +177,17 @@ public class SessaoService {
         return sessaoRepository.findByDataHoraBetweenOrderByDataHoraAsc(start, end);
     }
 
-    // Obter estatísticas completas (sessões + pessoas)
     public Map<String, Object> obterEstatisticas() {
         LocalDate hoje = LocalDate.now();
-        Instant inicioHoje = hoje.atStartOfDay(ZoneId.systemDefault()).toInstant();
-        Instant fimHoje = hoje.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant();
+        Instant inicioHoje = hoje.atStartOfDay(AgendaUtil.ZONE_SP).toInstant();
+        Instant fimHoje = hoje.plusDays(1).atStartOfDay(AgendaUtil.ZONE_SP).toInstant();
 
-        // Estatísticas de sessões
-        long hoje_total = sessaoRepository.countByDataHoraBetween(inicioHoje, fimHoje);
+        long hojeTotal = sessaoRepository.countByDataHoraBetween(inicioHoje, fimHoje);
         long pendentes = sessaoRepository.findPendentes(Instant.now()).size();
         long compareceu = sessaoRepository.countByStatus(SessaoStatus.COMPARECEU);
         long faltou = sessaoRepository.countByStatus(SessaoStatus.FALTOU);
         long total = sessaoRepository.count();
 
-        // Estatísticas de pessoas
         List<Sessao> todasSessoes = sessaoRepository.findAll();
 
         long pessoasComFaltas = todasSessoes.stream()
@@ -224,22 +204,17 @@ public class SessaoService {
                 .distinct()
                 .count();
 
-        // Mescla tudo em um único Map
         Map<String, Object> resultado = new HashMap<>();
-        resultado.put("hoje", hoje_total);
+        resultado.put("hoje", hojeTotal);
         resultado.put("pendentes", pendentes);
         resultado.put("compareceu", compareceu);
         resultado.put("faltou", faltou);
         resultado.put("total", total);
         resultado.put("pessoasComFaltas", pessoasComFaltas);
         resultado.put("pessoasQueCompareceram", pessoasQueCompareceram);
-        resultado.put("totalFaltas", faltou); // mesmo valor de faltou
-        resultado.put("totalComparecimentos", compareceu); // mesmo valor de compareceu
-
         return resultado;
     }
 
-    // Marca comparecimento e incrementa contador
     public Sessao marcarCompareceu(String id) {
         Sessao s = getById(id);
         s.marcarComparecimento();
@@ -248,7 +223,6 @@ public class SessaoService {
         return salva;
     }
 
-    // Marca falta e incrementa contador
     public Sessao marcarFaltou(String id) {
         Sessao s = getById(id);
         s.marcarFaltou();
@@ -257,7 +231,6 @@ public class SessaoService {
         return salva;
     }
 
-    // Cancela sessão
     public Sessao cancelar(String id) {
         Sessao s = getById(id);
         s.cancelar(null, USUARIO_SISTEMA, PERFIL_PADRAO);
@@ -267,18 +240,18 @@ public class SessaoService {
     public RemarcacaoResultado remarcar(String id, Instant novaDataHora, String escopoRaw, String motivo) {
         Sessao sessaoBase = getById(id);
         EscopoRemarcacao escopo = parseEscopo(escopoRaw);
-        validarJanelaAtendimento(novaDataHora);
+        AgendaUtil.validarJanela(novaDataHora);
 
         List<Sessao> sessoesAfetadas = resolverEscopoRemarcacao(sessaoBase, escopo);
         Duration deslocamento = Duration.between(sessaoBase.getDataHora(), novaDataHora);
-        Set<String> idsAfetados = sessoesAfetadas.stream().map(Sessao::getId).collect(java.util.stream.Collectors.toSet());
+        Set<String> idsAfetados = sessoesAfetadas.stream().map(Sessao::getId).collect(Collectors.toSet());
 
         Map<String, Instant> novosHorarios = new HashMap<>();
         for (Sessao sessao : sessoesAfetadas) {
             Instant destino = sessao.getId().equals(sessaoBase.getId())
                     ? novaDataHora
                     : sessao.getDataHora().plus(deslocamento);
-            validarJanelaAtendimento(destino);
+            AgendaUtil.validarJanela(destino);
             validarConflitosAgenda(destino, sessao.getId(), idsAfetados);
             novosHorarios.put(sessao.getId(), destino);
         }
@@ -297,7 +270,6 @@ public class SessaoService {
         );
     }
 
-    // Incrementa contador de faltas no Lead ou Paciente
     private void incrementarFaltas(Sessao sessao) {
         if (sessao.getPacienteId() != null) {
             pacienteRepository.findById(sessao.getPacienteId()).ifPresent(paciente -> {
@@ -312,7 +284,6 @@ public class SessaoService {
         }
     }
 
-    // Incrementa contador de comparecimentos no Lead ou Paciente
     private void incrementarComparecimentos(Sessao sessao) {
         if (sessao.getPacienteId() != null) {
             pacienteRepository.findById(sessao.getPacienteId()).ifPresent(paciente -> {
@@ -325,10 +296,6 @@ public class SessaoService {
                 leadRepository.save(lead);
             });
         }
-    }
-
-    private List<Sessao> listarAguardandoAvaliacao() {
-        return sessaoRepository.findByStatus(SessaoStatus.AGUARDANDO_AVALIACAO);
     }
 
     private EscopoRemarcacao parseEscopo(String escopoRaw) {
@@ -360,29 +327,13 @@ public class SessaoService {
                 .toList();
     }
 
-    private static final ZoneId ZONE_SP = ZoneId.of("America/Sao_Paulo");
-
-    private void validarJanelaAtendimento(Instant dataHora) {
-        ZonedDateTime zdt = dataHora.atZone(ZONE_SP);
-        DayOfWeek dia = zdt.getDayOfWeek();
-        if (dia == DayOfWeek.SATURDAY || dia == DayOfWeek.SUNDAY) {
-            throw new BusinessException("Não é permitido remarcar sessões para fins de semana");
-        }
-        LocalTime horario = zdt.toLocalTime();
-        if (horario.isBefore(INICIO_ATENDIMENTO) || !horario.isBefore(FIM_ATENDIMENTO)) {
-            throw new BusinessException("Horario fora da janela de atendimento (08h-20h)");
-        }
-    }
-
-    private static final int MAX_PACIENTES_POR_HORARIO = 6;
-
     private void validarConflitosAgenda(Instant dataHora, String sessaoAtualId, Set<String> idsDaMesmaOperacao) {
-        List<Sessao> conflitos = sessaoRepository.findByDataHoraAndStatusIn(dataHora, STATUS_CONFLITO).stream()
+        List<Sessao> conflitos = sessaoRepository.findByDataHoraAndStatusIn(dataHora, AgendaUtil.STATUS_CONFLITO).stream()
                 .filter(s -> !s.getId().equals(sessaoAtualId))
                 .filter(s -> !idsDaMesmaOperacao.contains(s.getId()))
                 .toList();
 
-        if (conflitos.size() < MAX_PACIENTES_POR_HORARIO) {
+        if (conflitos.size() < AgendaUtil.MAX_POR_HORARIO) {
             return;
         }
 
@@ -411,7 +362,6 @@ public class SessaoService {
         return "Paciente";
     }
 
-    // Busca sessão por ID
     private Sessao getById(String id) {
         return sessaoRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Sessão não encontrada: " + id));
@@ -421,6 +371,5 @@ public class SessaoService {
             int sessoesAfetadas,
             String serieId,
             String escopoAplicado
-    ) {
-    }
+    ) {}
 }

@@ -54,7 +54,6 @@ public class Paciente {
         return paciente;
     }
 
-    // ✅ NOVOS MÉTODOS
     public void incrementarFaltas() {
         this.totalFaltas++;
     }

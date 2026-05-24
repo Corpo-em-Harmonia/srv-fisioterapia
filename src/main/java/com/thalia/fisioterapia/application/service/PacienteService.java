@@ -2,9 +2,7 @@ package com.thalia.fisioterapia.application.service;
 
 import com.thalia.fisioterapia.application.exception.AgendaConflictException;
 import com.thalia.fisioterapia.application.exception.BusinessException;
-import com.thalia.fisioterapia.application.exception.PlanoForaValidadeException;
 import com.thalia.fisioterapia.application.exception.ResourceNotFoundException;
-import com.thalia.fisioterapia.domain.avaliacao.AvaliacaoStatus;
 import com.thalia.fisioterapia.domain.paciente.Paciente;
 import com.thalia.fisioterapia.domain.sessao.DiaSemanaPreferido;
 import com.thalia.fisioterapia.domain.sessao.ModoAgendamento;
@@ -24,12 +22,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.DayOfWeek;
 import java.time.Instant;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.time.ZoneId;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -40,14 +34,6 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @Service
 public class PacienteService {
-
-    private static final ZoneId DEFAULT_ZONE = ZoneId.of("America/Sao_Paulo");
-    private static final LocalTime INICIO_ATENDIMENTO = LocalTime.of(8, 0);
-    private static final LocalTime FIM_ATENDIMENTO = LocalTime.of(20, 0);
-    private static final int VALIDADE_GUIA_PADRAO_DIAS = 30;
-    private static final List<SessaoStatus> STATUS_CONFLITO = List.of(
-            SessaoStatus.MARCADA, SessaoStatus.REMARCADA, SessaoStatus.AGUARDANDO_AVALIACAO
-    );
 
     private final PacienteRepository pacienteRepository;
     private final SessaoRepository sessaoRepository;
@@ -117,7 +103,7 @@ public class PacienteService {
 
         ModoAgendamento modo = parseModo(req.modoAgendamento());
         LocalDateTime primeiraDataHora = req.dataHora();
-        validarJanela(primeiraDataHora);
+        AgendaUtil.validarJanela(primeiraDataHora);
 
         int frequencia = 1;
         int quantidade = 1;
@@ -126,10 +112,10 @@ public class PacienteService {
         if (modo == ModoAgendamento.RECORRENTE) {
             frequencia = req.frequenciaSemanal() != null ? req.frequenciaSemanal() : 1;
             quantidade = req.quantidadeSessoes() != null ? req.quantidadeSessoes() : 9;
-            int validade = req.validadeGuiaDias() != null ? req.validadeGuiaDias() : VALIDADE_GUIA_PADRAO_DIAS;
-            validarPlano(quantidade, frequencia, validade);
+            int validade = req.validadeGuiaDias() != null ? req.validadeGuiaDias() : AgendaUtil.VALIDADE_GUIA_PADRAO_DIAS;
+            AgendaUtil.validarPlano(quantidade, frequencia, validade);
             Set<DayOfWeek> dias = parseDias(req.diasSemanaPreferidos());
-            datas = gerarDatas(primeiraDataHora, quantidade, frequencia, dias);
+            datas = AgendaUtil.gerarDatas(primeiraDataHora, quantidade, frequencia, dias);
         } else {
             datas = List.of(primeiraDataHora);
         }
@@ -141,8 +127,8 @@ public class PacienteService {
         List<Sessao> sessoesParaSalvar = new ArrayList<>();
         for (int i = 0; i < datas.size(); i++) {
             LocalDateTime dt = datas.get(i);
-            validarJanela(dt);
-            Instant instant = dt.atZone(DEFAULT_ZONE).toInstant();
+            AgendaUtil.validarJanela(dt);
+            Instant instant = dt.atZone(AgendaUtil.ZONE_SP).toInstant();
             validarConflito(instant);
 
             Sessao sessao = new Sessao(pacienteId, req.avaliacaoId(), instant, req.observacao());
@@ -160,39 +146,13 @@ public class PacienteService {
         );
     }
 
-    private void validarJanela(LocalDateTime dataHora) {
-        DayOfWeek dia = dataHora.getDayOfWeek();
-        if (dia == DayOfWeek.SATURDAY || dia == DayOfWeek.SUNDAY) {
-            throw new BusinessException("Não é permitido agendar sessões nos fins de semana");
-        }
-        LocalTime horario = dataHora.toLocalTime();
-        if (horario.isBefore(INICIO_ATENDIMENTO) || !horario.isBefore(FIM_ATENDIMENTO)) {
-            throw new BusinessException("Horário fora da janela de atendimento (08h-20h)");
-        }
-    }
-
-    private static final int MAX_POR_HORARIO = 6;
-
     private void validarConflito(Instant dataHora) {
-        List<Sessao> conflitos = sessaoRepository.findByDataHoraAndStatusIn(dataHora, STATUS_CONFLITO);
-        if (conflitos.size() >= MAX_POR_HORARIO) {
+        List<Sessao> conflitos = sessaoRepository.findByDataHoraAndStatusIn(dataHora, AgendaUtil.STATUS_CONFLITO);
+        if (conflitos.size() >= AgendaUtil.MAX_POR_HORARIO) {
             List<AgendaConflictException.ConflitoAgendaItem> itens = conflitos.stream()
                     .map(s -> new AgendaConflictException.ConflitoAgendaItem(s.getId(), s.getDataHora(), ""))
                     .toList();
             throw new AgendaConflictException("Já existe sessão nesse horário", itens);
-        }
-    }
-
-    private void validarPlano(int quantidade, int frequencia, int validade) {
-        int semanas = (quantidade + frequencia - 1) / frequencia;
-        int duracao = semanas * 7;
-        if (duracao > validade) {
-            int frequenciaMinima = 1;
-            for (int f = 1; f <= 7; f++) {
-                if (((quantidade + f - 1) / f) * 7 <= validade) { frequenciaMinima = f; break; }
-            }
-            throw new PlanoForaValidadeException(
-                    "Plano não cabe na validade da guia", duracao, validade, frequenciaMinima);
         }
     }
 
@@ -213,47 +173,6 @@ public class PacienteService {
             } catch (IllegalArgumentException ex) {
                 throw new BusinessException(ex.getMessage());
             }
-        }
-        return resultado;
-    }
-
-    private List<LocalDateTime> gerarDatas(LocalDateTime primeira, int quantidade, int frequencia, Set<DayOfWeek> diasPreferidos) {
-        List<LocalDateTime> resultado = new ArrayList<>();
-        LocalTime horario = primeira.toLocalTime();
-        LocalDate inicio = primeira.toLocalDate();
-        LocalDate cursor = inicio;
-
-        while (resultado.size() < quantidade) {
-            LocalDate fim = cursor.plusDays(6);
-            List<LocalDate> preferidos = new ArrayList<>();
-            List<LocalDate> fallback = new ArrayList<>();
-
-            for (LocalDate dia = cursor; !dia.isAfter(fim); dia = dia.plusDays(1)) {
-                if (dia.isBefore(inicio)) continue;
-                if (!diasPreferidos.isEmpty() && diasPreferidos.contains(dia.getDayOfWeek())) {
-                    preferidos.add(dia);
-                } else if (diasPreferidos.isEmpty()) {
-                    fallback.add(dia);
-                } else {
-                    fallback.add(dia);
-                }
-            }
-
-            preferidos.sort(Comparator.naturalOrder());
-            fallback.sort(Comparator.naturalOrder());
-
-            int restantes = frequencia;
-            for (LocalDate data : preferidos) {
-                if (restantes == 0 || resultado.size() == quantidade) break;
-                resultado.add(LocalDateTime.of(data, horario));
-                restantes--;
-            }
-            for (LocalDate data : fallback) {
-                if (restantes == 0 || resultado.size() == quantidade) break;
-                resultado.add(LocalDateTime.of(data, horario));
-                restantes--;
-            }
-            cursor = cursor.plusDays(7);
         }
         return resultado;
     }

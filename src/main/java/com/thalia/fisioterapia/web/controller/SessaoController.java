@@ -3,8 +3,8 @@ package com.thalia.fisioterapia.web.controller;
 import com.thalia.fisioterapia.application.service.SessaoService;
 import com.thalia.fisioterapia.domain.sessao.Sessao;
 import com.thalia.fisioterapia.domain.sessao.SessaoStatus;
-import com.thalia.fisioterapia.infrastructure.repository.paciente.PacienteRepository;
 import com.thalia.fisioterapia.infrastructure.repository.lead.LeadRepository;
+import com.thalia.fisioterapia.infrastructure.repository.paciente.PacienteRepository;
 import com.thalia.fisioterapia.web.dto.avaliacao.IniciarAvaliacaoResponse;
 import com.thalia.fisioterapia.web.dto.sessao.RegistrarEvolucaoRequest;
 import com.thalia.fisioterapia.web.dto.sessao.RemarcarSessaoRequest;
@@ -28,12 +28,11 @@ public class SessaoController {
     private final LeadRepository leadRepository;
 
     public SessaoController(SessaoService sessaoService, PacienteRepository pacienteRepository, LeadRepository leadRepository) {
+        this.sessaoService = sessaoService;
         this.pacienteRepository = pacienteRepository;
         this.leadRepository = leadRepository;
-        this.sessaoService = sessaoService;
     }
 
-    // ✅ GET /api/sessoes?periodo=pendentes&status=marcada
     @GetMapping
     public ResponseEntity<List<SessaoResponse>> listar(
             @RequestParam(required = false) String periodo,
@@ -57,21 +56,14 @@ public class SessaoController {
         List<Sessao> sessoes;
 
         if (date != null) {
-            // Busca por data específica
             sessoes = sessaoService.listarPorDia(date);
         } else if (periodo != null) {
-            // Busca por período (pendentes, hoje, semana, mes)
             sessoes = sessaoService.listarPorPeriodo(periodo, statusFiltro);
         } else {
-            // Padrão: pendentes
             sessoes = sessaoService.listarPendentes();
         }
 
-        List<SessaoResponse> resp = sessoes.stream()
-                .map(this::toResponse)
-                .toList();
-
-        return ResponseEntity.ok(resp);
+        return ResponseEntity.ok(sessoes.stream().map(this::toResponse).toList());
     }
 
     @GetMapping("/estatisticas")
@@ -104,25 +96,21 @@ public class SessaoController {
         ));
     }
 
-    //  NOVO: Recepção marca comparecimento de avaliação
     @PatchMapping("/{id}/compareceu-avaliacao")
     public ResponseEntity<SessaoResponse> compareceuAvaliacao(@PathVariable String id) {
         return ResponseEntity.ok(toResponse(sessaoService.marcarCompareceuAvaliacao(id)));
     }
 
-    //  NOVO: Fisio marca avaliação como concluída
     @PatchMapping("/{id}/avaliar")
     public ResponseEntity<SessaoResponse> marcarAvaliada(@PathVariable String id) {
         return ResponseEntity.ok(toResponse(sessaoService.marcarAvaliada(id)));
     }
 
-    // Converte lead em paciente e cria documento de avaliação
     @PostMapping("/{id}/converter-lead")
     public ResponseEntity<IniciarAvaliacaoResponse> converterLead(@PathVariable String id) {
         return ResponseEntity.ok(sessaoService.converterLeadParaPaciente(id));
     }
 
-    // Registra evolução de uma sessão de tratamento
     @PatchMapping("/{id}/evolucao")
     public ResponseEntity<SessaoResponse> registrarEvolucao(
             @PathVariable String id,
@@ -131,20 +119,10 @@ public class SessaoController {
         return ResponseEntity.ok(toResponse(sessaoService.registrarEvolucao(id, req)));
     }
 
-    // Histórico de sessões de um paciente
     @GetMapping("/historico/{pacienteId}")
     public ResponseEntity<List<SessaoHistoricoResponse>> historico(@PathVariable String pacienteId) {
         return ResponseEntity.ok(sessaoService.getHistoricoPaciente(pacienteId));
     }
-
-    //  NOVO: Listar aguardando avaliação (para fisio)
-//    @GetMapping("/aguardando-avaliacao")
-//    public ResponseEntity<List<SessaoResponse>> aguardandoAvaliacao() {
-//        List<SessaoResponse> resp = sessaoService.listarAguardandoAvaliacao().stream()
-//                .map(this::toResponse)
-//                .toList();
-//        return ResponseEntity.ok(resp);
-//    }
 
     private SessaoResponse toResponse(Sessao s) {
         String nome = null;

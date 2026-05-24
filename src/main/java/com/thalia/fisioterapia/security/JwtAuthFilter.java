@@ -1,5 +1,6 @@
 package com.thalia.fisioterapia.security;
 
+import com.thalia.fisioterapia.domain.usuario.Usuario;
 import com.thalia.fisioterapia.infrastructure.repository.usuario.UsuarioRepository;
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
@@ -37,7 +38,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 String role  = claims.get("role", String.class);
 
                 boolean ativo = usuarioRepository.findByEmail(email)
-                        .map(u -> u.isAtivo())
+                        .map(Usuario::isAtivo)
                         .orElse(false);
 
                 if (ativo) {

@@ -21,8 +21,8 @@ public class CriarLeadRequest {
     @Pattern(regexp = "^[\\d\\s()\\-+]{7,20}$", message = "Telefone inválido")
     private String telefone;
 
-    @Email(message = "E-mail inválido")
     @NotBlank(message = "E-mail é obrigatório")
+    @Email(message = "E-mail inválido")
     @Size(max = 150, message = "E-mail deve ter no máximo 150 caracteres")
     private String email;
 

@@ -1,21 +1,17 @@
 package com.thalia.fisioterapia.application.service;
 
-import com.thalia.fisioterapia.application.exception.BusinessException;
 import com.thalia.fisioterapia.application.exception.AgendaConflictException;
-import com.thalia.fisioterapia.application.exception.PlanoForaValidadeException;
+import com.thalia.fisioterapia.application.exception.BusinessException;
 import com.thalia.fisioterapia.application.exception.ResourceNotFoundException;
-import com.thalia.fisioterapia.domain.sessao.DiaSemanaPreferido;
 import com.thalia.fisioterapia.domain.lead.Lead;
 import com.thalia.fisioterapia.domain.lead.LeadAcao;
 import com.thalia.fisioterapia.domain.lead.LeadStatus;
 import com.thalia.fisioterapia.domain.sessao.ModoAgendamento;
 import com.thalia.fisioterapia.domain.sessao.Sessao;
-import com.thalia.fisioterapia.domain.sessao.SessaoStatus;
 import com.thalia.fisioterapia.domain.sessao.SessaoTipo;
-
+import com.thalia.fisioterapia.infrastructure.repository.lead.LeadRepository;
 import com.thalia.fisioterapia.infrastructure.repository.paciente.PacienteRepository;
 import com.thalia.fisioterapia.infrastructure.repository.sessao.SessaoRepository;
-import com.thalia.fisioterapia.infrastructure.repository.lead.LeadRepository;
 import com.thalia.fisioterapia.web.dto.agenda.AgendarAvaliacaoRequest;
 import com.thalia.fisioterapia.web.dto.agenda.AgendarAvaliacaoResponse;
 import com.thalia.fisioterapia.web.dto.lead.CriarLeadRequest;
@@ -25,14 +21,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
-import java.time.DayOfWeek;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.time.ZoneId;
 import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -40,12 +30,6 @@ import java.util.UUID;
 @Slf4j
 @Service
 public class LeadService {
-
-    private static final ZoneId DEFAULT_ZONE = ZoneId.of("America/Sao_Paulo");
-    private static final LocalTime INICIO_ATENDIMENTO = LocalTime.of(8, 0);
-    private static final LocalTime FIM_ATENDIMENTO = LocalTime.of(20, 0);
-    private static final int VALIDADE_GUIA_PADRAO_DIAS = 30;
-    private static final List<SessaoStatus> STATUS_CONFLITO = List.of(SessaoStatus.MARCADA, SessaoStatus.REMARCADA, SessaoStatus.AGUARDANDO_AVALIACAO);
 
     private final LeadRepository leadRepository;
     private final SessaoRepository sessaoRepository;
@@ -78,12 +62,8 @@ public class LeadService {
         return toResponse(saved);
     }
 
-
     public List<LeadResponse> listarTodos() {
-        return leadRepository.findAll()
-                .stream()
-                .map(this::toResponse)
-                .toList();
+        return leadRepository.findAll().stream().map(this::toResponse).toList();
     }
 
     public java.util.Optional<LeadResponse> buscarPorEmail(String email) {
@@ -96,17 +76,16 @@ public class LeadService {
                 .map(this::toResponse)
                 .toList();
     }
+
     @Transactional
     public Lead executarAcaoSimples(String leadId, LeadAcao acao) {
         Lead lead = buscarLead(leadId);
         log.debug("Executando ação {} para lead [{}]", acao, leadId);
-
         switch (acao) {
             case REGISTRAR_CONTATO -> lead.registrarContato();
             case AGENDAR_AVALIACAO -> lead.marcarComoAgendado();
             case CANCELAR -> lead.marcarComoPerdido();
         }
-
         return leadRepository.save(lead);
     }
 
@@ -117,11 +96,12 @@ public class LeadService {
         ModoAgendamento modoAgendamento = parseModoAgendamento(req.modoAgendamento());
 
         LocalDateTime primeiraDataHora = req.dataHora();
-        validarJanelaAtendimento(primeiraDataHora);
+        AgendaUtil.validarJanela(primeiraDataHora);
 
         int frequenciaSemanal = 1;
         int quantidadeSessoes = 1;
         List<LocalDateTime> datasAgendamento;
+
         if (modoAgendamento == ModoAgendamento.RECORRENTE) {
             if (req.frequenciaSemanal() == null) {
                 throw new BusinessException("frequenciaSemanal obrigatorio para modo recorrente");
@@ -132,20 +112,14 @@ public class LeadService {
             frequenciaSemanal = req.frequenciaSemanal();
             quantidadeSessoes = req.quantidadeSessoes();
 
-                int validadeGuiaDias = req.validadeGuiaDias() != null
+            int validadeGuiaDias = req.validadeGuiaDias() != null
                     ? req.validadeGuiaDias()
-                    : VALIDADE_GUIA_PADRAO_DIAS;
-                validarPlanoNaValidadeGuia(quantidadeSessoes, frequenciaSemanal, validadeGuiaDias);
+                    : AgendaUtil.VALIDADE_GUIA_PADRAO_DIAS;
+            AgendaUtil.validarPlano(quantidadeSessoes, frequenciaSemanal, validadeGuiaDias);
 
-                    Set<DayOfWeek> diasPreferidos = parseDiasPreferidos(req.diasSemanaPreferidos());
-                    datasAgendamento = gerarDatasRecorrentes(
-                        primeiraDataHora,
-                        quantidadeSessoes,
-                        frequenciaSemanal,
-                        diasPreferidos
-                    );
-                } else {
-                    datasAgendamento = List.of(primeiraDataHora);
+            datasAgendamento = AgendaUtil.gerarDatas(primeiraDataHora, quantidadeSessoes, frequenciaSemanal, Set.of());
+        } else {
+            datasAgendamento = List.of(primeiraDataHora);
         }
 
         String serieId = modoAgendamento == ModoAgendamento.RECORRENTE
@@ -155,23 +129,15 @@ public class LeadService {
         List<Sessao> sessoesParaSalvar = new ArrayList<>();
         for (int i = 0; i < datasAgendamento.size(); i++) {
             LocalDateTime dataHoraOcorrencia = datasAgendamento.get(i);
-            validarJanelaAtendimento(dataHoraOcorrencia);
+            AgendaUtil.validarJanela(dataHoraOcorrencia);
 
-            Instant dataHoraInstant = dataHoraOcorrencia.atZone(DEFAULT_ZONE).toInstant();
+            Instant dataHoraInstant = dataHoraOcorrencia.atZone(AgendaUtil.ZONE_SP).toInstant();
             validarConflitosAgenda(dataHoraInstant);
 
             SessaoTipo tipoSessao = (i == 0) ? SessaoTipo.AVALIACAO : SessaoTipo.SESSAO;
-            Sessao sessao = new Sessao(
-                    lead.getId(),
-                    tipoSessao,
-                    dataHoraInstant,
-                    req.observacao()
-            );
+            Sessao sessao = new Sessao(lead.getId(), tipoSessao, dataHoraInstant, req.observacao());
 
-            if (serieId != null) {
-                sessao.definirSerie(serieId, i + 1);
-            }
-
+            if (serieId != null) sessao.definirSerie(serieId, i + 1);
             sessoesParaSalvar.add(sessao);
         }
 
@@ -188,34 +154,15 @@ public class LeadService {
         );
     }
 
-    private void validarJanelaAtendimento(LocalDateTime dataHora) {
-        DayOfWeek dia = dataHora.getDayOfWeek();
-        if (dia == DayOfWeek.SATURDAY || dia == DayOfWeek.SUNDAY) {
-            throw new BusinessException("Não é permitido agendar sessões nos fins de semana");
-        }
-        LocalTime horario = dataHora.toLocalTime();
-        if (horario.isBefore(INICIO_ATENDIMENTO) || !horario.isBefore(FIM_ATENDIMENTO)) {
-            throw new BusinessException("Horário fora da janela de atendimento (08h–20h)");
-        }
-    }
-
-    private static final int MAX_PACIENTES_POR_HORARIO = 6;
-
     private void validarConflitosAgenda(Instant dataHora) {
-        List<Sessao> conflitos = sessaoRepository.findByDataHoraAndStatusIn(dataHora, STATUS_CONFLITO);
-        if (conflitos.size() < MAX_PACIENTES_POR_HORARIO) {
-            return;
+        List<Sessao> conflitos = sessaoRepository.findByDataHoraAndStatusIn(dataHora, AgendaUtil.STATUS_CONFLITO);
+        if (conflitos.size() >= AgendaUtil.MAX_POR_HORARIO) {
+            List<AgendaConflictException.ConflitoAgendaItem> itens = conflitos.stream()
+                    .map(s -> new AgendaConflictException.ConflitoAgendaItem(
+                            s.getId(), s.getDataHora(), obterNomePessoa(s)))
+                    .toList();
+            throw new AgendaConflictException("Ja existe sessao nesse horario", itens);
         }
-
-        List<AgendaConflictException.ConflitoAgendaItem> itens = conflitos.stream()
-                .map(s -> new AgendaConflictException.ConflitoAgendaItem(
-                        s.getId(),
-                        s.getDataHora(),
-                        obterNomePessoa(s)
-                ))
-                .toList();
-
-        throw new AgendaConflictException("Ja existe sessao nesse horario", itens);
     }
 
     private String obterNomePessoa(Sessao sessao) {
@@ -224,13 +171,11 @@ public class LeadService {
                     .map(p -> p.getNome() != null ? p.getNome() : "Paciente")
                     .orElse("Paciente");
         }
-
         if (sessao.getLeadId() != null) {
             return leadRepository.findById(sessao.getLeadId())
                     .map(l -> l.getNome() != null ? l.getNome() : "Lead")
                     .orElse("Lead");
         }
-
         return "Paciente";
     }
 
@@ -240,104 +185,6 @@ public class LeadService {
         } catch (IllegalArgumentException ex) {
             throw new BusinessException("modoAgendamento invalido: %s".formatted(modoAgendamento));
         }
-    }
-
-    private void validarPlanoNaValidadeGuia(int quantidadeSessoes, int frequenciaSemanal, int validadeGuiaDias) {
-        int duracaoDias = calcularDuracaoDias(quantidadeSessoes, frequenciaSemanal);
-        if (duracaoDias <= validadeGuiaDias) {
-            return;
-        }
-
-        int frequenciaMinimaSugerida = calcularFrequenciaMinimaSugerida(quantidadeSessoes, validadeGuiaDias);
-        throw new PlanoForaValidadeException(
-                "Plano recorrente nao cabe na validade da guia",
-                duracaoDias,
-                validadeGuiaDias,
-                frequenciaMinimaSugerida
-        );
-    }
-
-    private int calcularDuracaoDias(int quantidadeSessoes, int frequenciaSemanal) {
-        int semanas = (quantidadeSessoes + frequenciaSemanal - 1) / frequenciaSemanal;
-        return semanas * 7;
-    }
-
-    private int calcularFrequenciaMinimaSugerida(int quantidadeSessoes, int validadeGuiaDias) {
-        for (int f = 1; f <= 7; f++) {
-            if (calcularDuracaoDias(quantidadeSessoes, f) <= validadeGuiaDias) {
-                return f;
-            }
-        }
-        return 7;
-    }
-
-    private Set<DayOfWeek> parseDiasPreferidos(List<String> diasSemanaPreferidos) {
-        if (diasSemanaPreferidos == null || diasSemanaPreferidos.isEmpty()) {
-            return Set.of();
-        }
-
-        Set<DayOfWeek> dias = new HashSet<>();
-        for (String dia : diasSemanaPreferidos) {
-            try {
-                dias.add(DiaSemanaPreferido.fromCode(dia).getDayOfWeek());
-            } catch (IllegalArgumentException ex) {
-                throw new BusinessException(ex.getMessage());
-            }
-        }
-        return dias;
-    }
-
-    private List<LocalDateTime> gerarDatasRecorrentes(
-            LocalDateTime primeiraDataHora,
-            int quantidadeSessoes,
-            int frequenciaSemanal,
-            Set<DayOfWeek> diasPreferidos
-    ) {
-        List<LocalDateTime> resultado = new ArrayList<>();
-        LocalTime horario = primeiraDataHora.toLocalTime();
-        LocalDate inicio = primeiraDataHora.toLocalDate();
-        LocalDate cursorSemana = inicio;
-
-        while (resultado.size() < quantidadeSessoes) {
-            LocalDate fimSemana = cursorSemana.plusDays(6);
-            List<LocalDate> candidatosPreferidos = new ArrayList<>();
-            List<LocalDate> candidatosFallback = new ArrayList<>();
-
-            for (LocalDate dia = cursorSemana; !dia.isAfter(fimSemana); dia = dia.plusDays(1)) {
-                if (dia.isBefore(inicio)) {
-                    continue;
-                }
-                if (!diasPreferidos.isEmpty() && diasPreferidos.contains(dia.getDayOfWeek())) {
-                    candidatosPreferidos.add(dia);
-                } else {
-                    candidatosFallback.add(dia);
-                }
-            }
-
-            candidatosPreferidos.sort(Comparator.naturalOrder());
-            candidatosFallback.sort(Comparator.naturalOrder());
-
-            int restantesSemana = frequenciaSemanal;
-            for (LocalDate data : candidatosPreferidos) {
-                if (restantesSemana == 0 || resultado.size() == quantidadeSessoes) {
-                    break;
-                }
-                resultado.add(LocalDateTime.of(data, horario));
-                restantesSemana--;
-            }
-
-            for (LocalDate data : candidatosFallback) {
-                if (restantesSemana == 0 || resultado.size() == quantidadeSessoes) {
-                    break;
-                }
-                resultado.add(LocalDateTime.of(data, horario));
-                restantesSemana--;
-            }
-
-            cursorSemana = cursorSemana.plusDays(7);
-        }
-
-        return resultado;
     }
 
     private Lead buscarLead(String id) {

@@ -15,10 +15,9 @@ public class Sessao {
     @Id
     private String id;
 
-    private String leadId;        // Avaliação: preenchido
-    private String pacienteId;    // NULL até converter
-    private String avaliacaoId;   // ✅ Sessões recorrentes: ID da avaliação que gerou
-
+    private String leadId;
+    private String pacienteId;
+    private String avaliacaoId;
 
     private SessaoTipo tipo;
     private Instant dataHora;
@@ -31,8 +30,6 @@ public class Sessao {
     private Integer numeroOcorrencia;
     private List<SessaoAlteracao> alteracoes;
     private SessaoEvolucao evolucao;
-
-
 
     protected Sessao() {}
 
@@ -73,7 +70,7 @@ public class Sessao {
     }
 
     public void remarcar(Instant novaDataHora, String escopo, String motivo, String usuarioId, PerfilUsuario perfil) {
-        validarNaoCancelada(); // ✅ Só cancela bloqueia
+        validarNaoCancelada();
         this.dataHora = novaDataHora;
         this.status = SessaoStatus.REMARCADA;
         this.atualizadoEm = Instant.now();
@@ -89,7 +86,6 @@ public class Sessao {
         this.atualizadoEm = Instant.now();
     }
 
-    // ✅ NOVO: Fisio marca que fez a avaliação
     public void marcarAvaliada() {
         validarNaoCancelada();
         if (this.status != SessaoStatus.AGUARDANDO_AVALIACAO) {
@@ -100,13 +96,13 @@ public class Sessao {
     }
 
     public void marcarComparecimento() {
-        validarNaoCancelada(); // ✅ Só cancela bloqueia
+        validarNaoCancelada();
         this.status = SessaoStatus.COMPARECEU;
         this.atualizadoEm = Instant.now();
     }
 
     public void marcarFaltou() {
-        validarNaoCancelada(); // ✅ Só cancela bloqueia
+        validarNaoCancelada();
         this.status = SessaoStatus.FALTOU;
         this.atualizadoEm = Instant.now();
     }
