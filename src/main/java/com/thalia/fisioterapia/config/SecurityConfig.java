@@ -1,12 +1,24 @@
 package com.thalia.fisioterapia.config;
 
+import com.thalia.fisioterapia.security.JwtAuthFilter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
-import org.springframework.security.config.Customizer;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.core.env.Environment;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.DelegatingPasswordEncoder;
+import org.springframework.security.crypto.factory.PasswordEncoderFactories;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -15,33 +27,60 @@ import java.util.Arrays;
 import java.util.List;
 
 @Configuration
+@EnableWebSecurity
+@EnableMethodSecurity
 public class SecurityConfig {
 
+    private final Environment environment;
+
+    public SecurityConfig(Environment environment) {
+        this.environment = environment;
+    }
+
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http, CorsConfigurationSource corsConfigurationSource) throws Exception {
+    public SecurityFilterChain filterChain(HttpSecurity http,
+                                           CorsConfigurationSource corsConfigurationSource,
+                                           JwtAuthFilter jwtAuthFilter) throws Exception {
+        boolean isProd = Arrays.asList(environment.getActiveProfiles()).contains("prod");
+
         http
-                // API em dev: sem CSRF (senão POST/PATCH/DELETE costumam dar 403)
                 .csrf(csrf -> csrf.disable())
-
-                // usa o CORS definido abaixo
                 .cors(cors -> cors.configurationSource(corsConfigurationSource))
-
-                // libera tudo (dev). Se depois tiver login, a gente restringe
-                .authorizeHttpRequests(auth -> auth
-                        // preflight do navegador
-                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-
-                        // libera API
-                        .requestMatchers("/api/**").permitAll()
-
-                        // restante (html/static)
-                        .anyRequest().permitAll()
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(auth -> {
+                    auth.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll();
+                    auth.requestMatchers("/api/auth/**").permitAll();
+                    auth.requestMatchers(HttpMethod.POST, "/api/leads").permitAll();
+                    if (!isProd) {
+                        auth.requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll();
+                    }
+                    auth.requestMatchers("/api/**").authenticated();
+                    auth.anyRequest().denyAll();
+                })
+                .exceptionHandling(ex -> ex
+                        .authenticationEntryPoint((req, res, e) ->
+                                res.sendError(HttpStatus.UNAUTHORIZED.value(), "Não autenticado"))
                 )
-
-                // se você não usa login httpBasic nem formLogin, pode deixar assim
-                .httpBasic(Customizer.withDefaults());
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+                .httpBasic(httpBasic -> httpBasic.disable())
+                .formLogin(form -> form.disable())
+                .logout(logout -> logout.disable());
 
         return http.build();
+    }
+
+    @Bean
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
+        return config.getAuthenticationManager();
+    }
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        BCryptPasswordEncoder bcrypt = new BCryptPasswordEncoder(12);
+        DelegatingPasswordEncoder encoder =
+                (DelegatingPasswordEncoder) PasswordEncoderFactories.createDelegatingPasswordEncoder();
+        encoder.setDefaultPasswordEncoderForMatches(bcrypt);
+        return encoder;
     }
 
     @Bean
@@ -49,24 +88,10 @@ public class SecurityConfig {
             @Value("${app.cors.allowed-origins:http://localhost:4200}") String[] allowedOrigins
     ) {
         CorsConfiguration configuration = new CorsConfiguration();
-
-        // ex: app.cors.allowed-origins=http://localhost:4200,http://localhost:3000
         configuration.setAllowedOrigins(Arrays.asList(allowedOrigins));
-
-        // IMPORTANTE: inclui PATCH
-        configuration.setAllowedMethods(List.of(
-                "GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"
-        ));
-
-        // libera todos headers (inclui Authorization, Content-Type, etc.)
-        configuration.setAllowedHeaders(List.of("*"));
-
-        // se você NÃO usa cookie/sessão, pode trocar pra false
-        configuration.setAllowCredentials(true);
-
-        // opcional: caso você queira ler algum header no front
-        configuration.setExposedHeaders(List.of("Location"));
-
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+        configuration.setAllowedHeaders(List.of("Content-Type", "Authorization", "Accept"));
+        configuration.setAllowCredentials(false);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;

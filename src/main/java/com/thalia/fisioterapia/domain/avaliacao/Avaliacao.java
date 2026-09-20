@@ -19,7 +19,18 @@ public class Avaliacao {
     private LocalDateTime criadaEm;
     private LocalDateTime finalizadaEm;
 
-    private FichaClinica fichaClinica;
+    private String medico;
+    private String hda;
+    private String hpp;
+    private String diagnostico;
+    private String testesRealizados;
+    private String goniometria;
+    private String condutaTerapeutica;
+    private String prognostico;
+    private String desfecho;
+    private String comodidade;
+    private String medicamentos;
+    private String cirurgia;
 
     private Avaliacao() {}
 
@@ -44,8 +55,48 @@ public class Avaliacao {
         if (this.status != AvaliacaoStatus.EM_ATENDIMENTO) {
             throw new IllegalStateException("Atendimento não iniciado");
         }
-        this.fichaClinica = ficha;
+        aplicarFicha(ficha);
         this.status = AvaliacaoStatus.FINALIZADA;
         this.finalizadaEm = LocalDateTime.now();
+    }
+
+    public void atualizar(FichaClinica ficha) {
+        if (this.status == AvaliacaoStatus.AGUARDANDO) {
+            throw new IllegalStateException("Avaliação ainda não foi realizada");
+        }
+        aplicarFicha(ficha);
+        this.finalizadaEm = LocalDateTime.now();
+    }
+
+    public FichaClinica getFichaClinica() {
+        return new FichaClinica(
+                medico,
+                hda,
+                hpp,
+                diagnostico,
+                testesRealizados,
+                goniometria,
+                condutaTerapeutica,
+                prognostico,
+                desfecho,
+                comodidade,
+                medicamentos,
+                cirurgia
+        );
+    }
+
+    private void aplicarFicha(FichaClinica ficha) {
+        this.medico             = ficha.medico();
+        this.hda                = ficha.hda();
+        this.hpp                = ficha.hpp();
+        this.diagnostico        = ficha.diagnostico();
+        this.testesRealizados   = ficha.testesRealizados();
+        this.goniometria        = ficha.goniometria();
+        this.condutaTerapeutica = ficha.condutaTerapeutica();
+        this.prognostico        = ficha.prognostico();
+        this.desfecho           = ficha.desfecho();
+        this.comodidade         = ficha.comodidade();
+        this.medicamentos       = ficha.medicamentos();
+        this.cirurgia           = ficha.cirurgia();
     }
 }

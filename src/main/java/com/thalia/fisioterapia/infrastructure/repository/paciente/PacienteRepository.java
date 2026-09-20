@@ -1,4 +1,4 @@
-package com.thalia.fisioterapia.infra.repository.paciente;
+package com.thalia.fisioterapia.infrastructure.repository.paciente;
 
 import com.thalia.fisioterapia.domain.paciente.Paciente;
 import org.springframework.data.mongodb.repository.MongoRepository;

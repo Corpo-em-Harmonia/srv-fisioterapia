@@ -5,6 +5,8 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 
 @Getter
 @Document(collection = "sessoes")
@@ -13,10 +15,9 @@ public class Sessao {
     @Id
     private String id;
 
-    private String leadId;        // Avaliação: preenchido
-    private String pacienteId;    // NULL até converter
-    private String avaliacaoId;   // ✅ Sessões recorrentes: ID da avaliação que gerou
-
+    private String leadId;
+    private String pacienteId;
+    private String avaliacaoId;
 
     private SessaoTipo tipo;
     private Instant dataHora;
@@ -25,8 +26,10 @@ public class Sessao {
     private Instant criadoEm;
     private Instant atualizadoEm;
     private String observacao;
-
-
+    private String serieId;
+    private Integer numeroOcorrencia;
+    private List<SessaoAlteracao> alteracoes;
+    private SessaoEvolucao evolucao;
 
     protected Sessao() {}
 
@@ -38,7 +41,10 @@ public class Sessao {
         this.criadoEm = Instant.now();
         this.atualizadoEm = Instant.now();
         this.observacao = observacao;
+        this.alteracoes = new ArrayList<>();
+        registrarAlteracao(SessaoAuditoriaAcao.CRIAR, null, null, "sistema", PerfilUsuario.ADMIN);
     }
+
     public Sessao(String pacienteId, String avaliacaoId, Instant dataHora, String observacao) {
         this.pacienteId = pacienteId;
         this.avaliacaoId = avaliacaoId;
@@ -48,6 +54,14 @@ public class Sessao {
         this.criadoEm = Instant.now();
         this.atualizadoEm = Instant.now();
         this.observacao = observacao;
+        this.alteracoes = new ArrayList<>();
+        registrarAlteracao(SessaoAuditoriaAcao.CRIAR, null, null, "sistema", PerfilUsuario.ADMIN);
+    }
+
+    public void definirSerie(String serieId, int numeroOcorrencia) {
+        this.serieId = serieId;
+        this.numeroOcorrencia = numeroOcorrencia;
+        this.atualizadoEm = Instant.now();
     }
 
     public void setPaciente(String pacienteId) {
@@ -55,11 +69,16 @@ public class Sessao {
         this.atualizadoEm = Instant.now();
     }
 
-    public void remarcar(Instant novaDataHora) {
-        validarNaoCancelada(); // ✅ Só cancela bloqueia
+    public void remarcar(Instant novaDataHora, String escopo, String motivo, String usuarioId, PerfilUsuario perfil) {
+        validarNaoCancelada();
         this.dataHora = novaDataHora;
         this.status = SessaoStatus.REMARCADA;
         this.atualizadoEm = Instant.now();
+        registrarAlteracao(SessaoAuditoriaAcao.REMARCAR, escopo, motivo, usuarioId, perfil);
+    }
+
+    public void remarcar(Instant novaDataHora) {
+        remarcar(novaDataHora, null, null, "sistema", PerfilUsuario.ADMIN);
     }
 
     public void marcarComparecimentoAvaliacao() {
@@ -71,7 +90,6 @@ public class Sessao {
         this.atualizadoEm = Instant.now();
     }
 
-    // ✅ NOVO: Fisio marca que fez a avaliação
     public void marcarAvaliada() {
         validarNaoCancelada();
         if (this.status != SessaoStatus.AGUARDANDO_AVALIACAO) {
@@ -82,26 +100,57 @@ public class Sessao {
     }
 
     public void marcarComparecimento() {
-        validarNaoCancelada(); // ✅ Só cancela bloqueia
+        validarNaoCancelada();
         this.status = SessaoStatus.COMPARECEU;
         this.atualizadoEm = Instant.now();
     }
 
     public void marcarFaltou() {
-        validarNaoCancelada(); // ✅ Só cancela bloqueia
+        validarNaoCancelada();
         this.status = SessaoStatus.FALTOU;
         this.atualizadoEm = Instant.now();
     }
 
-    public void cancelar() {
+    public void cancelar(String motivo, String usuarioId, PerfilUsuario perfil) {
         this.status = SessaoStatus.CANCELADA;
+        this.atualizadoEm = Instant.now();
+        registrarAlteracao(SessaoAuditoriaAcao.CANCELAR, null, motivo, usuarioId, perfil);
+    }
+
+    public void cancelar() {
+        cancelar(null, "sistema", PerfilUsuario.ADMIN);
+    }
+
+    public void registrarEvolucao(SessaoEvolucao evolucao) {
+        validarNaoCancelada();
+        this.evolucao = evolucao;
+        this.status = SessaoStatus.REALIZADA;
         this.atualizadoEm = Instant.now();
     }
 
-    // ✅ APENAS cancelada bloqueia (conforme acordado)
     private void validarNaoCancelada() {
         if (this.status == SessaoStatus.CANCELADA) {
             throw new IllegalStateException("Sessão cancelada não pode receber ações.");
         }
+    }
+
+    private void registrarAlteracao(
+            SessaoAuditoriaAcao acao,
+            String escopo,
+            String motivo,
+            String usuarioId,
+            PerfilUsuario perfil
+    ) {
+        if (this.alteracoes == null) {
+            this.alteracoes = new ArrayList<>();
+        }
+        this.alteracoes.add(new SessaoAlteracao(
+                acao,
+                escopo,
+                motivo,
+                usuarioId,
+                perfil,
+                Instant.now()
+        ));
     }
 }

@@ -1,4 +1,4 @@
-package com.thalia.fisioterapia.infra.repository.avaliacao;
+package com.thalia.fisioterapia.infrastructure.repository.avaliacao;
 
 
 import com.thalia.fisioterapia.domain.avaliacao.Avaliacao;

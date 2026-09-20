@@ -2,11 +2,13 @@ package com.thalia.fisioterapia.domain.lead;
 
 import lombok.Getter;
 import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.LocalDateTime;
 
+@Slf4j
 @Document(collection = "leads")
 @Getter
 @Setter
@@ -29,7 +31,7 @@ public class Lead {
 
     protected Lead() {}
 
-    public Lead(String nome, String sobrenome, String email, String telefone, String observacao) {
+    public Lead(String nome, String sobrenome, String email, String telefone,String observacao) {
         this.nome = nome;
         this.sobrenome = sobrenome;
         this.email = email;
@@ -42,26 +44,29 @@ public class Lead {
     public void registrarContato() {
         validarEstado(LeadStatus.NOVO);
         this.status = LeadStatus.CONTATADO;
+        log.info("Lead [{}] avançou para CONTATADO", id);
     }
 
     public void marcarComoAgendado() {
         if (this.status != LeadStatus.NOVO && this.status != LeadStatus.CONTATADO) {
             throw new IllegalStateException(
-                    "Não é possível agendar. Estado atual: " + status + " | Estados permitidos: NOVO ou CONTATADO"
+                    "Não é possível agendar. Estado atual: %s | Estados permitidos: NOVO ou CONTATADO".formatted(status)
             );
         }
         this.status = LeadStatus.AGENDADO;
+        log.info("Lead [{}] marcado como AGENDADO", id);
     }
 
     public void marcarComoPerdido() {
         if (status == LeadStatus.PERDIDO) return;
         this.status = LeadStatus.PERDIDO;
+        log.info("Lead [{}] marcado como PERDIDO", id);
     }
 
     private void validarEstado(LeadStatus esperado) {
         if (this.status != esperado) {
             throw new IllegalStateException(
-                    "Ação inválida. Estado atual: " + status + " | Esperado: " + esperado
+                    "Ação inválida. Estado atual: %s | Esperado: %s".formatted(status, esperado)
             );
         }
     }

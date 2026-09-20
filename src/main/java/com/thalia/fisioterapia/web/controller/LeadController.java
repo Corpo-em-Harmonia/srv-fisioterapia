@@ -2,8 +2,8 @@ package com.thalia.fisioterapia.web.controller;
 
 import com.thalia.fisioterapia.application.service.LeadService;
 import com.thalia.fisioterapia.domain.lead.Lead;
-import com.thalia.fisioterapia.domain.sessao.Sessao;
 import com.thalia.fisioterapia.web.dto.agenda.AgendarAvaliacaoRequest;
+import com.thalia.fisioterapia.web.dto.agenda.AgendarAvaliacaoResponse;
 import com.thalia.fisioterapia.web.dto.lead.CriarLeadRequest;
 import com.thalia.fisioterapia.web.dto.lead.ExecutarAcaoLeadRequest;
 import com.thalia.fisioterapia.web.dto.lead.LeadResponse;
@@ -26,8 +26,7 @@ public class LeadController {
 
     @PostMapping
     public ResponseEntity<LeadResponse> criaLead(@Valid @RequestBody CriarLeadRequest request) {
-        LeadResponse response = leadService.criar(request);  // ✅ LeadResponse
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        return ResponseEntity.status(HttpStatus.CREATED).body(leadService.criar(request));
     }
 
     @GetMapping
@@ -38,24 +37,27 @@ public class LeadController {
         return ResponseEntity.ok(leadService.listarTodos());
     }
 
-    // ✅ Ações simples (sem modal)
     @PostMapping("/{id}/acoes")
     public ResponseEntity<Lead> executarAcao(
             @PathVariable String id,
             @Valid @RequestBody ExecutarAcaoLeadRequest request
     ) {
-        Lead updated = leadService.executarAcaoSimples(id, request.acao());
-        return ResponseEntity.ok(updated);
+        return ResponseEntity.ok(leadService.executarAcaoSimples(id, request.acao()));
     }
 
-    // ✅ Agendar avaliação (com payload) → cria Sessao + muda Lead p/ AGENDADO
     @PostMapping("/{id}/agendar-avaliacao")
-    public ResponseEntity<Sessao> agendarAvaliacao(
+    public ResponseEntity<AgendarAvaliacaoResponse> agendarAvaliacao(
             @PathVariable String id,
             @Valid @RequestBody AgendarAvaliacaoRequest request
     ) {
-        Sessao sessao = leadService.agendarAvaliacao(id, request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(sessao);
+        return ResponseEntity.status(HttpStatus.CREATED).body(leadService.agendarAvaliacao(id, request));
+    }
+
+    @GetMapping("/buscar-email")
+    public ResponseEntity<LeadResponse> buscarPorEmail(@RequestParam String email) {
+        return leadService.buscarPorEmail(email)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
 
     @DeleteMapping("/{id}")
