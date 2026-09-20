@@ -68,6 +68,23 @@ public class Avaliacao {
         this.finalizadaEm = LocalDateTime.now();
     }
 
+    public FichaClinica getFichaClinica() {
+        return new FichaClinica(
+                medico,
+                hda,
+                hpp,
+                diagnostico,
+                testesRealizados,
+                goniometria,
+                condutaTerapeutica,
+                prognostico,
+                desfecho,
+                comodidade,
+                medicamentos,
+                cirurgia
+        );
+    }
+
     private void aplicarFicha(FichaClinica ficha) {
         this.medico             = ficha.medico();
         this.hda                = ficha.hda();

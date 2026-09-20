@@ -77,6 +77,10 @@ public class Sessao {
         registrarAlteracao(SessaoAuditoriaAcao.REMARCAR, escopo, motivo, usuarioId, perfil);
     }
 
+    public void remarcar(Instant novaDataHora) {
+        remarcar(novaDataHora, null, null, "sistema", PerfilUsuario.ADMIN);
+    }
+
     public void marcarComparecimentoAvaliacao() {
         validarNaoCancelada();
         if (this.tipo != SessaoTipo.AVALIACAO) {
@@ -111,6 +115,10 @@ public class Sessao {
         this.status = SessaoStatus.CANCELADA;
         this.atualizadoEm = Instant.now();
         registrarAlteracao(SessaoAuditoriaAcao.CANCELAR, null, motivo, usuarioId, perfil);
+    }
+
+    public void cancelar() {
+        cancelar(null, "sistema", PerfilUsuario.ADMIN);
     }
 
     public void registrarEvolucao(SessaoEvolucao evolucao) {

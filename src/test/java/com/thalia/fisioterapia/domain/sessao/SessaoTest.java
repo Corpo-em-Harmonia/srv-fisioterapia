@@ -41,7 +41,7 @@ class SessaoTest {
     @Test
     void deveCancelar() {
         Sessao s = sessaoComum();
-        s.cancelar("paciente desistiu", "user-1", PerfilUsuario.RECEPCAO);
+        s.cancelar();
         assertThat(s.getStatus()).isEqualTo(SessaoStatus.CANCELADA);
     }
 
@@ -49,7 +49,7 @@ class SessaoTest {
     void deveRemarcar() {
         Sessao s = sessaoComum();
         Instant novaData = Instant.now().plus(2, ChronoUnit.HOURS);
-        s.remarcar(novaData, "somente_esta", "pedido do paciente", "user-1", PerfilUsuario.RECEPCAO);
+        s.remarcar(novaData);
         assertThat(s.getStatus()).isEqualTo(SessaoStatus.REMARCADA);
         assertThat(s.getDataHora()).isEqualTo(novaData);
     }
@@ -57,7 +57,7 @@ class SessaoTest {
     @Test
     void deveRejeitarAcaoEmSessaoCancelada() {
         Sessao s = sessaoComum();
-        s.cancelar("motivo", "user-1", PerfilUsuario.RECEPCAO);
+        s.cancelar();
         assertThatThrownBy(s::marcarComparecimento)
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("cancelada");
@@ -66,7 +66,7 @@ class SessaoTest {
     @Test
     void deveRejeitarAcaoEmSessaoCanceladaParaFaltou() {
         Sessao s = sessaoComum();
-        s.cancelar("motivo", "user-1", PerfilUsuario.RECEPCAO);
+        s.cancelar();
         assertThatThrownBy(s::marcarFaltou)
                 .isInstanceOf(IllegalStateException.class);
     }

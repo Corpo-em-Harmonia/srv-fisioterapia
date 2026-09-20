@@ -45,8 +45,7 @@ class AvaliacaoTest {
         FichaClinica ficha = fichaExemplo();
         av.finalizar(ficha);
         assertThat(av.getStatus()).isEqualTo(AvaliacaoStatus.FINALIZADA);
-        assertThat(av.getMedico()).isEqualTo(ficha.medico());
-        assertThat(av.getDiagnostico()).isEqualTo(ficha.diagnostico());
+        assertThat(av.getFichaClinica()).isEqualTo(ficha);
         assertThat(av.getFinalizadaEm()).isNotNull();
     }
 

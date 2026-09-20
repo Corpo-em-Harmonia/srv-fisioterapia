@@ -5,5 +5,4 @@ spring:
     import: optional:file:.env[.properties]
   data:
     mongodb:
-      # Sem valor padrão de propósito: nunca versionar credenciais do banco.
-      uri: ${MONGO_URI}
+      uri: ${MONGODB_URI:mongodb://localhost:27017/fisio}
