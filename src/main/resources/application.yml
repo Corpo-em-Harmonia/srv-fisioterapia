@@ -1,4 +1,9 @@
 spring:
+  config:
+    # Carrega segredos locais do arquivo .env (raiz do projeto, ignorado pelo git).
+    # Em produção use variáveis de ambiente reais — o .env é opcional.
+    import: optional:file:.env[.properties]
   data:
     mongodb:
-      uri: ${MONGO_URI:mongodb+srv://admin:admin@fisiocluster.tn8x1zh.mongodb.net/fisio?appName=FisioCluster}
+      # Sem valor padrão de propósito: nunca versionar credenciais do banco.
+      uri: ${MONGO_URI}
