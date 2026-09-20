@@ -1,6 +1,7 @@
 package com.thalia.fisioterapia.config;
 
 import com.thalia.fisioterapia.security.JwtAuthFilter;
+import com.thalia.fisioterapia.security.LeadRateLimitFilter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -19,6 +20,7 @@ import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -40,10 +42,29 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http,
                                            CorsConfigurationSource corsConfigurationSource,
-                                           JwtAuthFilter jwtAuthFilter) throws Exception {
+                                           JwtAuthFilter jwtAuthFilter,
+                                           LeadRateLimitFilter leadRateLimitFilter) throws Exception {
         boolean isProd = Arrays.asList(environment.getActiveProfiles()).contains("prod");
+        boolean requireHttps = environment.getProperty("app.security.require-https", Boolean.class, false);
+
+        if (requireHttps) {
+            http.requiresChannel(channel -> channel.anyRequest().requiresSecure());
+        }
 
         http
+                .headers(headers -> {
+                    headers.frameOptions(frame -> frame.deny());
+                    headers.referrerPolicy(ref -> ref.policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.NO_REFERRER));
+                    headers.httpStrictTransportSecurity(hsts -> hsts
+                            .includeSubDomains(true)
+                            .maxAgeInSeconds(31536000));
+                    headers.permissionsPolicyHeader(p -> p.policy("geolocation=(), camera=(), microphone=()"));
+                    // CSP restritivo só em prod: em dev o Swagger UI precisa de scripts/estilos inline.
+                    if (isProd) {
+                        headers.contentSecurityPolicy(csp ->
+                                csp.policyDirectives("default-src 'none'; frame-ancestors 'none'"));
+                    }
+                })
                 .csrf(csrf -> csrf.disable())
                 .cors(cors -> cors.configurationSource(corsConfigurationSource))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -61,6 +82,7 @@ public class SecurityConfig {
                         .authenticationEntryPoint((req, res, e) ->
                                 res.sendError(HttpStatus.UNAUTHORIZED.value(), "Não autenticado"))
                 )
+                .addFilterBefore(leadRateLimitFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
                 .httpBasic(httpBasic -> httpBasic.disable())
                 .formLogin(form -> form.disable())

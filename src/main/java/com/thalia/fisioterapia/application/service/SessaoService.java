@@ -145,7 +145,7 @@ public class SessaoService {
     }
 
     public List<Sessao> listarPorPeriodo(String periodo, List<SessaoStatus> statusFiltro) {
-        LocalDate hoje = LocalDate.now();
+        LocalDate hoje = LocalDate.now(AgendaUtil.ZONE_SP);
         Instant start, end;
 
         switch (periodo.toLowerCase()) {
@@ -166,7 +166,7 @@ public class SessaoService {
             }
             case "todos" -> {
                 start = Instant.EPOCH;
-                end = LocalDate.now().plusYears(100).atStartOfDay(AgendaUtil.ZONE_SP).toInstant();
+                end = hoje.plusYears(100).atStartOfDay(AgendaUtil.ZONE_SP).toInstant();
             }
             default -> throw new BusinessException("Período inválido: %s".formatted(periodo));
         }
@@ -178,7 +178,7 @@ public class SessaoService {
     }
 
     public Map<String, Object> obterEstatisticas() {
-        LocalDate hoje = LocalDate.now();
+        LocalDate hoje = LocalDate.now(AgendaUtil.ZONE_SP);
         Instant inicioHoje = hoje.atStartOfDay(AgendaUtil.ZONE_SP).toInstant();
         Instant fimHoje = hoje.plusDays(1).atStartOfDay(AgendaUtil.ZONE_SP).toInstant();
 

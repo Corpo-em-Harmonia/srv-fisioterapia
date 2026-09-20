@@ -2,6 +2,7 @@ package com.thalia.fisioterapia.web.controller;
 
 import com.thalia.fisioterapia.domain.usuario.Usuario;
 import com.thalia.fisioterapia.infrastructure.repository.usuario.UsuarioRepository;
+import com.thalia.fisioterapia.security.ClientIpResolver;
 import com.thalia.fisioterapia.security.JwtService;
 import com.thalia.fisioterapia.security.LoginAttemptService;
 import com.thalia.fisioterapia.web.dto.auth.LoginRequest;
@@ -10,7 +11,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -31,14 +31,12 @@ public class AuthController {
     private final JwtService            jwtService;
     private final UsuarioRepository     usuarioRepository;
     private final LoginAttemptService   loginAttemptService;
-
-    @Value("${app.security.trust-proxy:false}")
-    private boolean trustProxy;
+    private final ClientIpResolver      clientIpResolver;
 
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request,
                                                HttpServletRequest httpRequest) {
-        String ip = resolverIp(httpRequest);
+        String ip = clientIpResolver.resolve(httpRequest);
 
         if (loginAttemptService.estaBloqueado(ip)) {
             log.warn("Login bloqueado por rate limit: ip={} email={}", ip, request.email());
@@ -76,16 +74,4 @@ public class AuthController {
         }
     }
 
-    private String resolverIp(HttpServletRequest request) {
-        if (trustProxy) {
-            String forwarded = request.getHeader("X-Forwarded-For");
-            if (forwarded != null && !forwarded.isBlank()) {
-                String ip = forwarded.split(",")[0].trim();
-                if (ip.matches("^[\\d.]+$|^[\\da-fA-F:]+$")) { // IPv4 ou IPv6 básico
-                    return ip;
-                }
-            }
-        }
-        return request.getRemoteAddr();
-    }
 }

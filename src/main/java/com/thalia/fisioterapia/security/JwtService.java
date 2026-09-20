@@ -5,6 +5,8 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.env.Environment;
+import org.springframework.core.env.Profiles;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
@@ -18,14 +20,21 @@ public class JwtService {
     private final SecretKey key;
     private final long expirationSeconds;
 
+    private static final String DEV_SECRET = "dev-only-secret-not-for-production-use";
+
     public JwtService(
             @Value("${auth.jwt.secret}") String secret,
-            @Value("${auth.jwt.expiration:28800}") long expirationSeconds
+            @Value("${auth.jwt.expiration:28800}") long expirationSeconds,
+            Environment environment
     ) {
         if (secret == null || secret.length() < 32) {
             throw new IllegalStateException(
                     "auth.jwt.secret deve ter pelo menos 32 caracteres. " +
                     "Defina a variável de ambiente JWT_SECRET com um valor seguro.");
+        }
+        if (DEV_SECRET.equals(secret) && environment.acceptsProfiles(Profiles.of("prod"))) {
+            throw new IllegalStateException(
+                    "JWT_SECRET não definido: o segredo de desenvolvimento não pode ser usado no profile prod.");
         }
         this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
         this.expirationSeconds = expirationSeconds;
