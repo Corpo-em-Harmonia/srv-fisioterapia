@@ -24,7 +24,7 @@ public class AvaliacaoController {
 
     @PostMapping("/iniciar")
     public ResponseEntity<Void> iniciar(@Valid @RequestBody IniciarAvaliacaoRequest request) {
-        avaliacaoService.iniciar(request.getAvaliacaoId());
+        avaliacaoService.iniciar(request.getLeadId());
         return ResponseEntity.ok().build();
     }
 

@@ -16,4 +16,6 @@ public interface UsuarioRepository extends MongoRepository<Usuario, String> {
     boolean existsByRole(Role role);
 
     List<Usuario> findAllByOrderByCriadoEmDesc();
+
+    List<Usuario> findAllByRoleOrderByCriadoEmDesc(Role role);
 }

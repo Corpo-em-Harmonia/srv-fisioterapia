@@ -21,14 +21,16 @@ public class UsuarioController {
 
     private final UsuarioService usuarioService;
 
+    // RECEPCIONISTA recebe apenas os pacientes (filtro aplicado no service).
     @GetMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','RECEPCIONISTA')")
     public ResponseEntity<List<UsuarioResponse>> listar() {
-        return ResponseEntity.ok(usuarioService.listarTodos());
+        return ResponseEntity.ok(usuarioService.listar());
     }
 
+    // RECEPCIONISTA só pode criar PACIENTE — regra validada em UsuarioService.criar.
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','RECEPCIONISTA')")
     public ResponseEntity<UsuarioResponse> criar(@Valid @RequestBody CriarUsuarioRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(usuarioService.criar(request));
     }
@@ -46,8 +48,9 @@ public class UsuarioController {
         return ResponseEntity.ok(usuarioService.alternarStatus(id));
     }
 
+    // RECEPCIONISTA só pode redefinir senha de PACIENTE — validado em UsuarioService.resetSenha.
     @PostMapping("/{id}/reset-senha")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','RECEPCIONISTA')")
     public ResponseEntity<Void> resetSenha(@PathVariable String id,
                                            @Valid @RequestBody ResetSenhaRequest request) {
         usuarioService.resetSenha(id, request);

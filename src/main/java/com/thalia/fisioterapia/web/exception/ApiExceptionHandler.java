@@ -2,11 +2,14 @@ package com.thalia.fisioterapia.web.exception;
 
 import com.thalia.fisioterapia.application.exception.BusinessException;
 import com.thalia.fisioterapia.application.exception.AgendaConflictException;
+import com.thalia.fisioterapia.application.exception.ConflictException;
 import com.thalia.fisioterapia.application.exception.PlanoForaValidadeException;
 import com.thalia.fisioterapia.application.exception.ResourceNotFoundException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.DisabledException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import lombok.extern.slf4j.Slf4j;
@@ -26,6 +29,27 @@ public class ApiExceptionHandler {
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ApiErrorResponse> handleBusiness(BusinessException ex) {
         return buildResponse(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
+    @ExceptionHandler(ConflictException.class)
+    public ResponseEntity<ApiErrorResponse> handleConflict(ConflictException ex) {
+        return buildResponse(HttpStatus.CONFLICT, ex.getMessage());
+    }
+
+    // Sem este handler, o AccessDeniedException do @PreAuthorize cairia no handler genérico (500).
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ApiErrorResponse> handleAccessDenied(AccessDeniedException ex) {
+        String original = ex.getMessage();
+        boolean mensagemPadraoDoSpring = original == null
+                || original.equalsIgnoreCase("Access Denied")
+                || original.equalsIgnoreCase("Acesso negado");
+        return buildResponse(HttpStatus.FORBIDDEN,
+                mensagemPadraoDoSpring ? "Você não tem permissão para realizar esta ação." : original);
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiErrorResponse> handleUnreadable(HttpMessageNotReadableException ex) {
+        return buildResponse(HttpStatus.BAD_REQUEST, "Corpo da requisição inválido");
     }
 
     @ExceptionHandler(AgendaConflictException.class)
@@ -93,6 +117,7 @@ public class ApiExceptionHandler {
                         Instant.now(),
                         status.value(),
                         status.getReasonPhrase(),
+                        message,
                         message
                 )
         );

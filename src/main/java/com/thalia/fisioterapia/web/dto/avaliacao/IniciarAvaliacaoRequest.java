@@ -7,5 +7,5 @@ import lombok.Data;
 public class IniciarAvaliacaoRequest {
 
     @NotBlank(message = "ID da avaliação é obrigatório")
-    private String avaliacaoId;
+    private String leadId; // representa o avaliacaoId — nome mantido por compatibilidade com frontend
 }

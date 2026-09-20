@@ -1,6 +1,6 @@
 package com.thalia.fisioterapia.application.service;
 
-import com.thalia.fisioterapia.application.exception.BusinessException;
+import com.thalia.fisioterapia.application.exception.ConflictException;
 import com.thalia.fisioterapia.application.exception.ResourceNotFoundException;
 import com.thalia.fisioterapia.domain.usuario.Usuario;
 import com.thalia.fisioterapia.infrastructure.repository.usuario.UsuarioRepository;
@@ -11,6 +11,9 @@ import com.thalia.fisioterapia.web.dto.usuario.ResetSenhaRequest;
 import com.thalia.fisioterapia.web.dto.usuario.UsuarioResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -26,16 +29,19 @@ public class UsuarioService {
     private final UsuarioRepository usuarioRepository;
     private final PasswordEncoder   passwordEncoder;
 
-    public List<UsuarioResponse> listarTodos() {
-        return usuarioRepository.findAllByOrderByCriadoEmDesc()
-                .stream()
-                .map(this::toResponse)
-                .toList();
+    /** ADMIN vê todos os usuários; qualquer outro perfil autorizado (recepção) vê só pacientes. */
+    public List<UsuarioResponse> listar() {
+        List<Usuario> usuarios = chamadorTemPapel(Role.ADMIN)
+                ? usuarioRepository.findAllByOrderByCriadoEmDesc()
+                : usuarioRepository.findAllByRoleOrderByCriadoEmDesc(Role.PACIENTE);
+        return usuarios.stream().map(this::toResponse).toList();
     }
 
     public UsuarioResponse criar(CriarUsuarioRequest request) {
+        exigirPermissaoParaCriar(request.role());
+
         if (usuarioRepository.existsByEmail(request.email())) {
-            throw new BusinessException("E-mail já cadastrado");
+            throw new ConflictException("E-mail já cadastrado");
         }
 
         var usuario = new Usuario(
@@ -56,7 +62,7 @@ public class UsuarioService {
 
         if (!usuario.getEmail().equalsIgnoreCase(request.email())
                 && usuarioRepository.existsByEmail(request.email())) {
-            throw new BusinessException("E-mail já cadastrado por outro usuário");
+            throw new ConflictException("E-mail já cadastrado por outro usuário");
         }
 
         usuario.setNome(request.nome());
@@ -89,9 +95,41 @@ public class UsuarioService {
         Usuario usuario = usuarioRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado"));
 
+        if (!chamadorTemPapel(Role.ADMIN) && usuario.getRole() != Role.PACIENTE) {
+            throw new AccessDeniedException("Você só pode redefinir a senha de pacientes.");
+        }
+
         usuario.setSenha(passwordEncoder.encode(request.novaSenha()));
         usuarioRepository.save(usuario);
-        log.info("Senha do usuário [{}] redefinida por admin", usuario.getEmail());
+        log.info("Senha do usuário [{}] redefinida por {}", usuario.getEmail(), chamadorAtual());
+    }
+
+    /**
+     * Regra de negócio (não só de rota): ADMIN cria qualquer perfil; RECEPCIONISTA só cria PACIENTE.
+     * Fica aqui para que um recepcionista não consiga criar ADMIN enviando role: "ADMIN".
+     */
+    private void exigirPermissaoParaCriar(Role roleSolicitado) {
+        if (chamadorTemPapel(Role.ADMIN)) {
+            return;
+        }
+        if (chamadorTemPapel(Role.RECEPCIONISTA) && roleSolicitado == Role.PACIENTE) {
+            return;
+        }
+        log.warn("Criação de usuário negada: chamador={} role solicitado={}", chamadorAtual(), roleSolicitado);
+        throw new AccessDeniedException("Você só pode cadastrar usuários com o perfil Paciente.");
+    }
+
+    private boolean chamadorTemPapel(Role role) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        return auth != null
+                && auth.isAuthenticated()
+                && auth.getAuthorities().stream()
+                        .anyMatch(a -> a.getAuthority().equals("ROLE_" + role.name()));
+    }
+
+    private String chamadorAtual() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        return auth != null ? String.valueOf(auth.getName()) : "desconhecido";
     }
 
     public UsuarioResponse alternarStatus(String id) {
