@@ -133,7 +133,7 @@ class LeadServiceTest {
                 ))
         );
 
-        assertEquals("Plano recorrente nao cabe na validade da guia", ex.getMessage());
+        assertEquals("Plano não cabe na validade da guia", ex.getMessage());
         assertEquals(35, ex.getDuracaoDias());
         assertEquals(30, ex.getValidadeGuiaDias());
         assertEquals(3, ex.getFrequenciaMinimaSugerida());
