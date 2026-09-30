@@ -15,6 +15,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/usuarios")
 @RequiredArgsConstructor
@@ -31,6 +33,13 @@ public class UsuarioController {
     ) {
         var pageable = PageRequest.of(page, size, Sort.by("criadoEm").descending());
         return ResponseEntity.ok(usuarioService.listar(pageable));
+    }
+
+    // Usado pela recepção para escolher a fisio responsável ao agendar uma avaliação.
+    @GetMapping("/fisioterapeutas")
+    @PreAuthorize("hasAnyRole('ADMIN','RECEPCIONISTA')")
+    public ResponseEntity<List<UsuarioResponse>> listarFisioterapeutas() {
+        return ResponseEntity.ok(usuarioService.listarFisioterapeutas());
     }
 
     // RECEPCIONISTA só pode criar PACIENTE — regra validada em UsuarioService.criar.

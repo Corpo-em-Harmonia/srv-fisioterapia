@@ -8,15 +8,19 @@ import com.thalia.fisioterapia.domain.sessao.DiaSemanaPreferido;
 import com.thalia.fisioterapia.domain.sessao.ModoAgendamento;
 import com.thalia.fisioterapia.domain.sessao.Sessao;
 import com.thalia.fisioterapia.domain.sessao.SessaoStatus;
+import com.thalia.fisioterapia.domain.usuario.Usuario;
 import com.thalia.fisioterapia.infrastructure.repository.avaliacao.AvaliacaoRepository;
 import com.thalia.fisioterapia.infrastructure.repository.paciente.PacienteRepository;
 import com.thalia.fisioterapia.infrastructure.repository.sessao.SessaoRepository;
+import com.thalia.fisioterapia.infrastructure.repository.usuario.UsuarioRepository;
 import com.thalia.fisioterapia.web.dto.paciente.PacienteAtivoResponse;
 import com.thalia.fisioterapia.web.dto.sessao.AgendarSessoesRequest;
 import com.thalia.fisioterapia.web.dto.sessao.AgendarSessoesResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,20 +42,32 @@ public class PacienteService {
     private final PacienteRepository pacienteRepository;
     private final SessaoRepository sessaoRepository;
     private final AvaliacaoRepository avaliacaoRepository;
+    private final UsuarioRepository usuarioRepository;
 
     public PacienteService(
             PacienteRepository pacienteRepository,
             SessaoRepository sessaoRepository,
-            AvaliacaoRepository avaliacaoRepository
+            AvaliacaoRepository avaliacaoRepository,
+            UsuarioRepository usuarioRepository
     ) {
         this.pacienteRepository = pacienteRepository;
         this.sessaoRepository = sessaoRepository;
         this.avaliacaoRepository = avaliacaoRepository;
+        this.usuarioRepository = usuarioRepository;
     }
 
-    public Page<PacienteAtivoResponse> listarAtivos(Pageable pageable) {
+    public Page<PacienteAtivoResponse> listarAtivos(Pageable pageable, boolean meusPacientes) {
         Instant agora = Instant.now();
-        Page<Paciente> pagina = pacienteRepository.findAll(pageable);
+
+        Page<Paciente> pagina;
+        if (meusPacientes) {
+            String fisioterapeutaId = fisioterapeutaIdAutenticado();
+            pagina = fisioterapeutaId != null
+                    ? pacienteRepository.findByFisioterapeutaId(fisioterapeutaId, pageable)
+                    : pacienteRepository.findAll(pageable);
+        } else {
+            pagina = pacienteRepository.findAll(pageable);
+        }
 
         List<PacienteAtivoResponse> content = pagina.getContent().stream()
                 .map(paciente -> {
@@ -81,6 +97,11 @@ public class PacienteService {
                                     || s.getStatus() == SessaoStatus.AVALIADA)
                             .count();
 
+                    String fisioterapeutaNome = paciente.getFisioterapeutaId() != null
+                            ? usuarioRepository.findById(paciente.getFisioterapeutaId())
+                                    .map(Usuario::getNome).orElse(null)
+                            : null;
+
                     return new PacienteAtivoResponse(
                             paciente.getId(),
                             nomeCompleto(paciente),
@@ -88,7 +109,9 @@ public class PacienteService {
                             proximaSessao != null ? proximaSessao.toString() : null,
                             sessoes.size(),
                             sessoesRealizadas,
-                            statusClinico
+                            statusClinico,
+                            paciente.getFisioterapeutaId(),
+                            fisioterapeutaNome
                     );
                 })
                 .toList();
@@ -97,8 +120,41 @@ public class PacienteService {
     }
 
     @Transactional
+    public void reatribuirFisioterapeuta(String pacienteId, String fisioterapeutaId) {
+        Paciente paciente = pacienteRepository.findById(pacienteId)
+                .orElseThrow(() -> new ResourceNotFoundException("Paciente não encontrado"));
+
+        if (fisioterapeutaId != null && !fisioterapeutaId.isBlank()) {
+            usuarioRepository.findById(fisioterapeutaId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Fisioterapeuta não encontrada"));
+        }
+
+        paciente.atribuirFisioterapeuta(fisioterapeutaId);
+        pacienteRepository.save(paciente);
+
+        // Sessões futuras (ainda não realizadas) passam a ser da nova fisio;
+        // sessões já concluídas mantêm o histórico de quem realmente atendeu.
+        List<Sessao> sessoesPendentes = sessaoRepository.findByPacienteIdOrderByDataHoraAsc(pacienteId).stream()
+                .filter(s -> AgendaUtil.STATUS_CONFLITO.contains(s.getStatus()))
+                .toList();
+
+        for (Sessao sessao : sessoesPendentes) {
+            sessao.atribuirFisioterapeuta(fisioterapeutaId);
+        }
+        sessaoRepository.saveAll(sessoesPendentes);
+    }
+
+    private String fisioterapeutaIdAutenticado() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated()) return null;
+        return usuarioRepository.findByEmail(auth.getName())
+                .map(Usuario::getId)
+                .orElse(null);
+    }
+
+    @Transactional
     public AgendarSessoesResponse agendarSessoes(String pacienteId, AgendarSessoesRequest req) {
-        pacienteRepository.findById(pacienteId)
+        Paciente paciente = pacienteRepository.findById(pacienteId)
                 .orElseThrow(() -> new ResourceNotFoundException("Paciente não encontrado"));
 
         ModoAgendamento modo = parseModo(req.modoAgendamento());
@@ -129,10 +185,13 @@ public class PacienteService {
             LocalDateTime dt = datas.get(i);
             AgendaUtil.validarJanela(dt);
             Instant instant = dt.atZone(AgendaUtil.ZONE_SP).toInstant();
-            validarConflito(instant);
+            validarConflito(instant, paciente.getFisioterapeutaId());
 
             Sessao sessao = new Sessao(pacienteId, req.avaliacaoId(), instant, req.observacao());
             if (serieId != null) sessao.definirSerie(serieId, i + 1);
+            if (paciente.getFisioterapeutaId() != null) {
+                sessao.atribuirFisioterapeuta(paciente.getFisioterapeutaId());
+            }
             sessoesParaSalvar.add(sessao);
         }
 
@@ -146,8 +205,17 @@ public class PacienteService {
         );
     }
 
-    private void validarConflito(Instant dataHora) {
+    private void validarConflito(Instant dataHora, String fisioterapeutaId) {
         List<Sessao> conflitos = sessaoRepository.findByDataHoraAndStatusIn(dataHora, AgendaUtil.STATUS_CONFLITO);
+
+        if (fisioterapeutaId != null && !fisioterapeutaId.isBlank()) {
+            boolean fisioOcupada = conflitos.stream()
+                    .anyMatch(s -> fisioterapeutaId.equals(s.getFisioterapeutaId()));
+            if (fisioOcupada) {
+                throw new AgendaConflictException("Já existe sessão nesse horário para esta fisioterapeuta", List.of());
+            }
+        }
+
         if (conflitos.size() >= AgendaUtil.MAX_POR_HORARIO) {
             List<AgendaConflictException.ConflitoAgendaItem> itens = conflitos.stream()
                     .map(s -> new AgendaConflictException.ConflitoAgendaItem(s.getId(), s.getDataHora(), ""))

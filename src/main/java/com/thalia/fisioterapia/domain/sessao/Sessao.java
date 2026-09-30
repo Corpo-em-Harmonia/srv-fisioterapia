@@ -18,6 +18,7 @@ public class Sessao {
     private String leadId;
     private String pacienteId;
     private String avaliacaoId;
+    private String fisioterapeutaId;
 
     private SessaoTipo tipo;
     private Instant dataHora;
@@ -66,6 +67,11 @@ public class Sessao {
 
     public void setPaciente(String pacienteId) {
         this.pacienteId = pacienteId;
+        this.atualizadoEm = Instant.now();
+    }
+
+    public void atribuirFisioterapeuta(String fisioterapeutaId) {
+        this.fisioterapeutaId = fisioterapeutaId;
         this.atualizadoEm = Instant.now();
     }
 

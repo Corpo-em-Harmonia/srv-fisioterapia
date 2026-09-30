@@ -21,6 +21,7 @@ import org.springframework.stereotype.Service;
 
 import java.security.SecureRandom;
 import java.util.Base64;
+import java.util.List;
 
 @Slf4j
 @Service
@@ -36,6 +37,13 @@ public class UsuarioService {
                 ? usuarioRepository.findAll(pageable)
                 : usuarioRepository.findByRole(Role.PACIENTE, pageable);
         return usuarios.map(this::toResponse);
+    }
+
+    public List<UsuarioResponse> listarFisioterapeutas() {
+        return usuarioRepository.findByRoleOrderByNomeAsc(Role.FISIOTERAPEUTA).stream()
+                .filter(Usuario::isAtivo)
+                .map(this::toResponse)
+                .toList();
     }
 
     public UsuarioResponse criar(CriarUsuarioRequest request) {

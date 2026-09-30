@@ -7,6 +7,8 @@ public record PacienteAtivoResponse(
         String proximaSessao,
         long totalSessoes,
         long sessoesRealizadas,
-        String statusClinico
+        String statusClinico,
+        String fisioterapeutaId,
+        String fisioterapeutaNome
 ) {
 }

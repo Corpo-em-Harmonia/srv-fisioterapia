@@ -1,5 +1,6 @@
 package com.thalia.fisioterapia.web.controller;
 
+import com.thalia.fisioterapia.domain.sessao.Sessao;
 import com.thalia.fisioterapia.domain.sessao.SessaoStatus;
 import com.thalia.fisioterapia.infrastructure.repository.sessao.SessaoRepository;
 import com.thalia.fisioterapia.web.dto.sessao.DisponibilidadeResponse;
@@ -27,7 +28,8 @@ public class AgendamentoController {
     @GetMapping("/disponibilidade")
     public ResponseEntity<List<DisponibilidadeResponse>> disponibilidade(
             @RequestParam("date") LocalDate date,
-            @RequestParam(value = "excludeId", required = false) String excludeId) {
+            @RequestParam(value = "excludeId", required = false) String excludeId,
+            @RequestParam(value = "fisioterapeutaId", required = false) String fisioterapeutaId) {
 
         DayOfWeek diaSemana = date.getDayOfWeek();
         if (diaSemana == DayOfWeek.SATURDAY || diaSemana == DayOfWeek.SUNDAY) {
@@ -39,16 +41,20 @@ public class AgendamentoController {
         for (LocalTime h : HORARIOS_ATENDIMENTO) {
             Instant dataHora = ZonedDateTime.of(date, h, ZONE_SP).toInstant();
 
-            long count = sessaoRepository.findByDataHoraAndStatusIn(
+            List<Sessao> sessoesNoHorario = sessaoRepository.findByDataHoraAndStatusIn(
                     dataHora,
                     List.of(SessaoStatus.MARCADA, SessaoStatus.REMARCADA, SessaoStatus.AGUARDANDO_AVALIACAO)
             ).stream()
                     .filter(s -> excludeId == null || !excludeId.equals(s.getId()))
-                    .count();
+                    .toList();
+
+            boolean disponivelGlobal = sessoesNoHorario.size() < MAX_POR_HORARIO;
+            boolean disponivelFisio = fisioterapeutaId == null
+                    || sessoesNoHorario.stream().noneMatch(s -> fisioterapeutaId.equals(s.getFisioterapeutaId()));
 
             resp.add(new DisponibilidadeResponse(
                     String.format("%02d:%02d", h.getHour(), h.getMinute()),
-                    count < MAX_POR_HORARIO
+                    disponivelGlobal && disponivelFisio
             ));
         }
 
