@@ -20,7 +20,6 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.core.env.Environment;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.DelegatingPasswordEncoder;
-import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
@@ -32,7 +31,9 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Configuration
 @EnableWebSecurity
@@ -109,9 +110,16 @@ public class SecurityConfig {
 
     @Bean
     public PasswordEncoder passwordEncoder() {
+        // createDelegatingPasswordEncoder() registra "bcrypt" -> new BCryptPasswordEncoder() (força 10
+        // por padrão); setDefaultPasswordEncoderForMatches só afeta o fallback usado para comparar
+        // hashes legados sem prefixo {bcrypt} — não muda o que .encode() realmente usa. Substituímos
+        // a entrada "bcrypt" do mapa para que o encode (admin bootstrap, criação de usuário, reset de
+        // senha) use força 12 de verdade, como documentado.
         BCryptPasswordEncoder bcrypt = new BCryptPasswordEncoder(12);
-        DelegatingPasswordEncoder encoder =
-                (DelegatingPasswordEncoder) PasswordEncoderFactories.createDelegatingPasswordEncoder();
+        String idForEncode = "bcrypt";
+        Map<String, PasswordEncoder> encoders = new HashMap<>();
+        encoders.put(idForEncode, bcrypt);
+        DelegatingPasswordEncoder encoder = new DelegatingPasswordEncoder(idForEncode, encoders);
         encoder.setDefaultPasswordEncoderForMatches(bcrypt);
         return encoder;
     }

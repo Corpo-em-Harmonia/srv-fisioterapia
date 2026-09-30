@@ -48,14 +48,15 @@ public class UsuarioService {
 
     public UsuarioResponse criar(CriarUsuarioRequest request) {
         exigirPermissaoParaCriar(request.role());
+        String email = normalizarEmail(request.email());
 
-        if (usuarioRepository.existsByEmail(request.email())) {
+        if (usuarioRepository.existsByEmail(email)) {
             throw new ConflictException("E-mail já cadastrado");
         }
 
         var usuario = new Usuario(
                 request.nome(),
-                request.email(),
+                email,
                 passwordEncoder.encode(request.senha()),
                 request.role()
         );
@@ -66,16 +67,17 @@ public class UsuarioService {
     }
 
     public UsuarioResponse atualizar(String id, AtualizarUsuarioRequest request) {
+        exigirPapel(Role.ADMIN);
         Usuario usuario = usuarioRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado"));
+        String email = normalizarEmail(request.email());
 
-        if (!usuario.getEmail().equalsIgnoreCase(request.email())
-                && usuarioRepository.existsByEmail(request.email())) {
+        if (!usuario.getEmail().equalsIgnoreCase(email) && usuarioRepository.existsByEmail(email)) {
             throw new ConflictException("E-mail já cadastrado por outro usuário");
         }
 
         usuario.setNome(request.nome());
-        usuario.setEmail(request.email());
+        usuario.setEmail(email);
         usuario.setRole(request.role());
         Usuario saved = usuarioRepository.save(usuario);
         log.info("Usuário [{}] atualizado por admin", saved.getEmail());
@@ -84,14 +86,24 @@ public class UsuarioService {
 
     public void criarParaPacienteSeNaoExistir(String nome, String sobrenome, String email, String telefone) {
         if (email == null || email.isBlank() || email.contains(".temp")) return;
-        if (usuarioRepository.existsByEmail(email)) return;
+        String emailNormalizado = normalizarEmail(email);
+        if (usuarioRepository.existsByEmail(emailNormalizado)) return;
 
         String nomeCompleto = (nome + (sobrenome != null && !sobrenome.isBlank() ? " " + sobrenome : "")).trim();
         String senhaInicial = gerarSenhaAleatoria();
 
-        var usuario = new Usuario(nomeCompleto, email, passwordEncoder.encode(senhaInicial), Role.PACIENTE);
+        var usuario = new Usuario(nomeCompleto, emailNormalizado, passwordEncoder.encode(senhaInicial), Role.PACIENTE);
         usuarioRepository.save(usuario);
-        log.info("Usuário criado para paciente: email={} — admin deve definir senha via reset-senha", email);
+        log.info("Usuário criado para paciente: email={} — admin deve definir senha via reset-senha", emailNormalizado);
+    }
+
+    /**
+     * Normaliza pra minúsculas antes de gravar/checar — o índice único do Mongo e as
+     * queries derivadas (existsByEmail) são case-sensitive, então sem isso
+     * "joao@x.com" e "Joao@X.com" seriam tratados como contas diferentes.
+     */
+    private String normalizarEmail(String email) {
+        return email == null ? null : email.trim().toLowerCase();
     }
 
     private String gerarSenhaAleatoria() {
@@ -128,6 +140,18 @@ public class UsuarioService {
         throw new AccessDeniedException("Você só pode cadastrar usuários com o perfil Paciente.");
     }
 
+    /**
+     * Defesa em profundidade: mesmo com @PreAuthorize("hasRole('ADMIN')") no controller,
+     * garante no service que só ADMIN passa por aqui — atualizar()/alternarStatus() podem
+     * promover qualquer usuário a ADMIN, então não devem depender só da anotação do controller
+     * (mesmo padrão que já protege criar()/resetSenha()).
+     */
+    private void exigirPapel(Role role) {
+        if (!chamadorTemPapel(role)) {
+            throw new AccessDeniedException("Ação restrita ao perfil " + role.name() + ".");
+        }
+    }
+
     private boolean chamadorTemPapel(Role role) {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         return auth != null
@@ -142,6 +166,7 @@ public class UsuarioService {
     }
 
     public UsuarioResponse alternarStatus(String id) {
+        exigirPapel(Role.ADMIN);
         Usuario usuario = usuarioRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado"));
 

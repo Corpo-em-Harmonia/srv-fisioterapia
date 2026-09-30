@@ -18,6 +18,7 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.web.bind.annotation.*;
 
@@ -64,12 +65,21 @@ public class AuthController {
             return ResponseEntity.ok(new LoginResponse(token, role.toLowerCase(), nome));
 
         } catch (DisabledException e) {
+            // Mesmo status/resposta de credenciais inválidas — devolver 403 aqui permitiria
+            // enumerar contas desativadas (ex-funcionários, pacientes suspensos) só observando
+            // o código HTTP, sem precisar acertar a senha.
             loginAttemptService.registrarFalha(ip);
             log.warn("Usuário inativo tentou login: email={}", request.email());
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         } catch (BadCredentialsException e) {
             loginAttemptService.registrarFalha(ip);
             log.warn("Credenciais inválidas: ip={} email={}", ip, request.email());
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        } catch (AuthenticationException e) {
+            // Qualquer outra falha de autenticação (ex.: Mongo momentaneamente indisponível
+            // durante o login) — 401 em vez de cair no handler genérico de 500.
+            loginAttemptService.registrarFalha(ip);
+            log.warn("Falha de autenticação inesperada: ip={} email={} tipo={}", ip, request.email(), e.getClass().getSimpleName());
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
     }
