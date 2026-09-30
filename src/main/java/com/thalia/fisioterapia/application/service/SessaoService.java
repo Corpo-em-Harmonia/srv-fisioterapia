@@ -16,6 +16,7 @@ import com.thalia.fisioterapia.infrastructure.repository.paciente.PacienteReposi
 import com.thalia.fisioterapia.infrastructure.repository.sessao.SessaoRepository;
 import com.thalia.fisioterapia.domain.sessao.SessaoEvolucao;
 import com.thalia.fisioterapia.web.dto.avaliacao.IniciarAvaliacaoResponse;
+import com.thalia.fisioterapia.web.dto.sessao.DisponibilidadeResponse;
 import com.thalia.fisioterapia.web.dto.sessao.RegistrarEvolucaoRequest;
 import com.thalia.fisioterapia.web.dto.sessao.SessaoHistoricoResponse;
 import lombok.extern.slf4j.Slf4j;
@@ -29,6 +30,9 @@ import java.time.DayOfWeek;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZonedDateTime;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -78,7 +82,7 @@ public class SessaoService {
                     return new SessaoHistoricoResponse(
                             s.getId(),
                             s.getNumeroOcorrencia(),
-                            s.getDataHora().toString(),
+                            s.getDataHora().atZone(AgendaUtil.ZONE_SP).toLocalDateTime().toString(),
                             s.getStatus().name().toLowerCase(),
                             s.getTipo().name().toLowerCase(),
                             ev != null ? ev.getObservacoes() : null,
@@ -118,6 +122,9 @@ public class SessaoService {
         Avaliacao avaliacao = Avaliacao.criarParaPaciente(paciente.getId());
         avaliacao = avaliacaoRepository.save(avaliacao);
 
+        sessao.definirAvaliacao(avaliacao.getId());
+        sessaoRepository.save(sessao);
+
         String nomeCompleto = paciente.getNome() +
                 (paciente.getSobrenome() != null && !paciente.getSobrenome().isBlank()
                         ? " " + paciente.getSobrenome() : "");
@@ -139,13 +146,19 @@ public class SessaoService {
         return sessaoRepository.save(s);
     }
 
-    public Page<Sessao> listarPorDia(LocalDate dia, Pageable pageable) {
+    public Page<Sessao> listarPorDia(LocalDate dia, List<SessaoStatus> statusFiltro, Pageable pageable) {
         Instant start = dia.atStartOfDay(AgendaUtil.ZONE_SP).toInstant();
         Instant end = dia.plusDays(1).atStartOfDay(AgendaUtil.ZONE_SP).toInstant();
+        if (statusFiltro != null && !statusFiltro.isEmpty()) {
+            return sessaoRepository.findByDataHoraBetweenAndStatusIn(start, end, statusFiltro, pageable);
+        }
         return sessaoRepository.findByDataHoraBetween(start, end, pageable);
     }
 
-    public Page<Sessao> listarPendentes(Pageable pageable) {
+    public Page<Sessao> listarPendentes(List<SessaoStatus> statusFiltro, Pageable pageable) {
+        if (statusFiltro != null && !statusFiltro.isEmpty()) {
+            return sessaoRepository.findPendentesComStatus(Instant.now(), statusFiltro, pageable);
+        }
         return sessaoRepository.findPendentes(Instant.now(), pageable);
     }
 
@@ -167,7 +180,7 @@ public class SessaoService {
                 end = hoje.plusMonths(1).withDayOfMonth(1).atStartOfDay(AgendaUtil.ZONE_SP).toInstant();
             }
             case "pendentes" -> {
-                return listarPendentes(pageable);
+                return listarPendentes(statusFiltro, pageable);
             }
             case "todos" -> {
                 start = Instant.EPOCH;
@@ -182,6 +195,57 @@ public class SessaoService {
         return sessaoRepository.findByDataHoraBetween(start, end, pageable);
     }
 
+    /**
+     * Horários de 30 em 30 min dentro da janela de atendimento real (AgendaUtil), sem pausa de
+     * almoço — antes esse cálculo era duplicado em AgendamentoController com uma janela (08h–19h
+     * + pausa de almoço) diferente da que validarJanela realmente aplica (08h–20h, sem almoço),
+     * então um horário podia ser aceito ao agendar mas nunca aparecer como disponível.
+     */
+    private static final List<LocalTime> HORARIOS_ATENDIMENTO = gerarHorariosAtendimento();
+
+    private static List<LocalTime> gerarHorariosAtendimento() {
+        List<LocalTime> horarios = new ArrayList<>();
+        LocalTime cursor = AgendaUtil.INICIO_ATENDIMENTO;
+        while (cursor.isBefore(AgendaUtil.FIM_ATENDIMENTO)) {
+            horarios.add(cursor);
+            cursor = cursor.plusMinutes(30);
+        }
+        return List.copyOf(horarios);
+    }
+
+    public List<DisponibilidadeResponse> consultarDisponibilidade(LocalDate date, String excludeId, String fisioterapeutaId) {
+        DayOfWeek diaSemana = date.getDayOfWeek();
+        if (diaSemana == DayOfWeek.SATURDAY || diaSemana == DayOfWeek.SUNDAY) {
+            return List.of();
+        }
+
+        Instant inicioDia = date.atStartOfDay(AgendaUtil.ZONE_SP).toInstant();
+        Instant fimDia = date.plusDays(1).atStartOfDay(AgendaUtil.ZONE_SP).toInstant();
+
+        // Uma única consulta pro dia inteiro em vez de uma por horário (eram ~22 round-trips).
+        Map<Instant, List<Sessao>> sessoesPorHorario = sessaoRepository
+                .findByDataHoraBetweenAndStatusInOrderByDataHoraAsc(inicioDia, fimDia, AgendaUtil.STATUS_CONFLITO)
+                .stream()
+                .filter(s -> excludeId == null || !excludeId.equals(s.getId()))
+                .collect(Collectors.groupingBy(Sessao::getDataHora));
+
+        List<DisponibilidadeResponse> resposta = new ArrayList<>();
+        for (LocalTime h : HORARIOS_ATENDIMENTO) {
+            Instant dataHora = ZonedDateTime.of(date, h, AgendaUtil.ZONE_SP).toInstant();
+            List<Sessao> sessoesNoHorario = sessoesPorHorario.getOrDefault(dataHora, List.of());
+
+            boolean disponivelGlobal = sessoesNoHorario.size() < AgendaUtil.MAX_POR_HORARIO;
+            boolean disponivelFisio = fisioterapeutaId == null
+                    || sessoesNoHorario.stream().noneMatch(s -> fisioterapeutaId.equals(s.getFisioterapeutaId()));
+
+            resposta.add(new DisponibilidadeResponse(
+                    "%02d:%02d".formatted(h.getHour(), h.getMinute()),
+                    disponivelGlobal && disponivelFisio
+            ));
+        }
+        return resposta;
+    }
+
     public Map<String, Object> obterEstatisticas() {
         LocalDate hoje = LocalDate.now(AgendaUtil.ZONE_SP);
         Instant inicioHoje = hoje.atStartOfDay(AgendaUtil.ZONE_SP).toInstant();
@@ -193,17 +257,15 @@ public class SessaoService {
         long faltou = sessaoRepository.countByStatus(SessaoStatus.FALTOU);
         long total = sessaoRepository.count();
 
-        List<Sessao> todasSessoes = sessaoRepository.findAll();
-
-        long pessoasComFaltas = todasSessoes.stream()
-                .filter(s -> s.getStatus() == SessaoStatus.FALTOU)
+        // Antes carregava a coleção inteira (findAll()) só pra contar pessoas distintas com
+        // falta/comparecimento — agora traz só as sessões com o status relevante.
+        long pessoasComFaltas = sessaoRepository.findByStatus(SessaoStatus.FALTOU).stream()
                 .map(s -> s.getPacienteId() != null ? s.getPacienteId() : s.getLeadId())
                 .filter(id -> id != null)
                 .distinct()
                 .count();
 
-        long pessoasQueCompareceram = todasSessoes.stream()
-                .filter(s -> s.getStatus() == SessaoStatus.COMPARECEU)
+        long pessoasQueCompareceram = sessaoRepository.findByStatus(SessaoStatus.COMPARECEU).stream()
                 .map(s -> s.getPacienteId() != null ? s.getPacienteId() : s.getLeadId())
                 .filter(id -> id != null)
                 .distinct()
@@ -311,6 +373,11 @@ public class SessaoService {
         }
     }
 
+    // Sessões nesses status já refletem um atendimento concluído (ou em avaliação) — remarcação
+    // em lote (toda_serie/desta_em_diante) nunca deve tocar nelas, só nas que ainda não aconteceram.
+    private static final Set<SessaoStatus> STATUS_REMARCAVEL_EM_LOTE =
+            Set.of(SessaoStatus.MARCADA, SessaoStatus.REMARCADA);
+
     private List<Sessao> resolverEscopoRemarcacao(Sessao sessaoBase, EscopoRemarcacao escopo) {
         if (escopo == EscopoRemarcacao.SOMENTE_ESTA) {
             return List.of(sessaoBase);
@@ -321,15 +388,21 @@ public class SessaoService {
         }
 
         List<Sessao> serie = sessaoRepository.findBySerieIdOrderByNumeroOcorrenciaAsc(sessaoBase.getSerieId());
+
         if (escopo == EscopoRemarcacao.TODA_SERIE) {
-            return serie;
+            return serie.stream().filter(this::remarcavelEmLote).toList();
         }
 
         int ocorrenciaAtual = sessaoBase.getNumeroOcorrencia() != null ? sessaoBase.getNumeroOcorrencia() : 1;
         return serie.stream()
                 .filter(s -> (s.getNumeroOcorrencia() != null ? s.getNumeroOcorrencia() : 1) >= ocorrenciaAtual)
+                .filter(this::remarcavelEmLote)
                 .sorted(Comparator.comparing(s -> s.getNumeroOcorrencia() != null ? s.getNumeroOcorrencia() : 1))
                 .toList();
+    }
+
+    private boolean remarcavelEmLote(Sessao s) {
+        return STATUS_REMARCAVEL_EM_LOTE.contains(s.getStatus());
     }
 
     private void validarConflitosAgenda(Instant dataHora, String sessaoAtualId, Set<String> idsDaMesmaOperacao, String fisioterapeutaId) {

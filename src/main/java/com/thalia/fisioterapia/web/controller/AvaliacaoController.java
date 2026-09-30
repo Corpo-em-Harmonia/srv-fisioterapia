@@ -61,7 +61,7 @@ public class AvaliacaoController {
     @PatchMapping("/{id}")
     public ResponseEntity<AvaliacaoDetalheResponse> atualizar(
             @PathVariable String id,
-            @RequestBody FinalizarAvaliacaoRequest request) {
+            @Valid @RequestBody FinalizarAvaliacaoRequest request) {
         return ResponseEntity.ok(avaliacaoService.atualizar(id, request));
     }
 

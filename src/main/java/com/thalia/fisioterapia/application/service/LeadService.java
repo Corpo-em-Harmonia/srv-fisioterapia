@@ -78,7 +78,7 @@ public class LeadService {
     }
 
     @Transactional
-    public Lead executarAcaoSimples(String leadId, LeadAcao acao) {
+    public LeadResponse executarAcaoSimples(String leadId, LeadAcao acao) {
         Lead lead = buscarLead(leadId);
         log.debug("Executando ação {} para lead [{}]", acao, leadId);
         switch (acao) {
@@ -86,7 +86,7 @@ public class LeadService {
             case AGENDAR_AVALIACAO -> lead.marcarComoAgendado();
             case CANCELAR -> lead.marcarComoPerdido();
         }
-        return leadRepository.save(lead);
+        return toResponse(leadRepository.save(lead));
     }
 
     @Transactional

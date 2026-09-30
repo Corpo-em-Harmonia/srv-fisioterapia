@@ -188,8 +188,17 @@ public class PacienteService {
         List<LocalDateTime> datas;
 
         if (modo == ModoAgendamento.RECORRENTE) {
-            frequencia = req.frequenciaSemanal() != null ? req.frequenciaSemanal() : 1;
-            quantidade = req.quantidadeSessoes() != null ? req.quantidadeSessoes() : 9;
+            // Antes usava defaults silenciosos (frequência=1, quantidade=9) quando o cliente
+            // esquecia esses campos — inconsistente com LeadService.agendarAvaliacao, que rejeita
+            // a mesma omissão com 400. Um typo no front podia criar 9 sessões semanais sem avisar.
+            if (req.frequenciaSemanal() == null) {
+                throw new BusinessException("frequenciaSemanal obrigatorio para modo recorrente");
+            }
+            if (req.quantidadeSessoes() == null) {
+                throw new BusinessException("quantidadeSessoes obrigatorio para modo recorrente");
+            }
+            frequencia = req.frequenciaSemanal();
+            quantidade = req.quantidadeSessoes();
             int validade = req.validadeGuiaDias() != null ? req.validadeGuiaDias() : AgendaUtil.VALIDADE_GUIA_PADRAO_DIAS;
             AgendaUtil.validarPlano(quantidade, frequencia, validade);
             Set<DayOfWeek> dias = parseDias(req.diasSemanaPreferidos());
@@ -239,8 +248,18 @@ public class PacienteService {
         }
 
         if (conflitos.size() >= AgendaUtil.MAX_POR_HORARIO) {
+            var pacienteIds = conflitos.stream().map(Sessao::getPacienteId).filter(Objects::nonNull).collect(Collectors.toSet());
+            Map<String, Paciente> pacientesPorId = new HashMap<>();
+            pacienteRepository.findAllById(pacienteIds).forEach(p -> pacientesPorId.put(p.getId(), p));
+
             List<AgendaConflictException.ConflitoAgendaItem> itens = conflitos.stream()
-                    .map(s -> new AgendaConflictException.ConflitoAgendaItem(s.getId(), s.getDataHora(), ""))
+                    .map(s -> new AgendaConflictException.ConflitoAgendaItem(
+                            s.getId(),
+                            s.getDataHora(),
+                            Optional.ofNullable(pacientesPorId.get(s.getPacienteId()))
+                                    .map(Paciente::getNome)
+                                    .orElse(s.getPacienteId() != null ? "Paciente" : "Lead")
+                    ))
                     .toList();
             throw new AgendaConflictException("Já existe sessão nesse horário", itens);
         }

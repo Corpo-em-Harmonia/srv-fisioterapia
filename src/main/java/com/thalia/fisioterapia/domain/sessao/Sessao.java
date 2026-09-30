@@ -7,6 +7,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 @Getter
 @Document(collection = "sessoes")
@@ -70,13 +71,18 @@ public class Sessao {
         this.atualizadoEm = Instant.now();
     }
 
+    public void definirAvaliacao(String avaliacaoId) {
+        this.avaliacaoId = avaliacaoId;
+        this.atualizadoEm = Instant.now();
+    }
+
     public void atribuirFisioterapeuta(String fisioterapeutaId) {
         this.fisioterapeutaId = fisioterapeutaId;
         this.atualizadoEm = Instant.now();
     }
 
     public void remarcar(Instant novaDataHora, String escopo, String motivo, String usuarioId, PerfilUsuario perfil) {
-        validarNaoCancelada();
+        validarPodeAgendar();
         this.dataHora = novaDataHora;
         this.status = SessaoStatus.REMARCADA;
         this.atualizadoEm = Instant.now();
@@ -88,7 +94,7 @@ public class Sessao {
     }
 
     public void marcarComparecimentoAvaliacao() {
-        validarNaoCancelada();
+        validarPodeAgendar();
         if (this.tipo != SessaoTipo.AVALIACAO) {
             throw new IllegalStateException("Apenas avaliações podem aguardar fisioterapeuta.");
         }
@@ -97,7 +103,6 @@ public class Sessao {
     }
 
     public void marcarAvaliada() {
-        validarNaoCancelada();
         if (this.status != SessaoStatus.AGUARDANDO_AVALIACAO) {
             throw new IllegalStateException("Avaliação precisa estar aguardando para ser concluída.");
         }
@@ -106,18 +111,21 @@ public class Sessao {
     }
 
     public void marcarComparecimento() {
-        validarNaoCancelada();
+        validarPodeAgendar();
         this.status = SessaoStatus.COMPARECEU;
         this.atualizadoEm = Instant.now();
     }
 
     public void marcarFaltou() {
-        validarNaoCancelada();
+        validarPodeAgendar();
         this.status = SessaoStatus.FALTOU;
         this.atualizadoEm = Instant.now();
     }
 
     public void cancelar(String motivo, String usuarioId, PerfilUsuario perfil) {
+        if (this.status == SessaoStatus.CANCELADA) {
+            return;
+        }
         this.status = SessaoStatus.CANCELADA;
         this.atualizadoEm = Instant.now();
         registrarAlteracao(SessaoAuditoriaAcao.CANCELAR, null, motivo, usuarioId, perfil);
@@ -128,15 +136,22 @@ public class Sessao {
     }
 
     public void registrarEvolucao(SessaoEvolucao evolucao) {
-        validarNaoCancelada();
+        validarPodeAgendar();
         this.evolucao = evolucao;
         this.status = SessaoStatus.REALIZADA;
         this.atualizadoEm = Instant.now();
     }
 
-    private void validarNaoCancelada() {
+    private static final Set<SessaoStatus> STATUS_EDITAVEIS = Set.of(SessaoStatus.MARCADA, SessaoStatus.REMARCADA);
+
+    /** Só sessões ainda não "concluídas" (não compareceu/faltou/avaliada/realizada/cancelada) podem ser alteradas. */
+    private void validarPodeAgendar() {
         if (this.status == SessaoStatus.CANCELADA) {
             throw new IllegalStateException("Sessão cancelada não pode receber ações.");
+        }
+        if (!STATUS_EDITAVEIS.contains(this.status)) {
+            throw new IllegalStateException(
+                    "Sessão com status %s não pode ser alterada.".formatted(this.status));
         }
     }
 

@@ -30,6 +30,9 @@ public interface SessaoRepository extends MongoRepository<Sessao, String> {
     @Query("{ 'dataHora': { $lte: ?0 }, 'status': { $in: ['MARCADA', 'REMARCADA'] } }")
     Page<Sessao> findPendentes(Instant agora, Pageable pageable);
 
+    @Query("{ 'dataHora': { $lte: ?0 }, 'status': { $in: ?1 } }")
+    Page<Sessao> findPendentesComStatus(Instant agora, Collection<SessaoStatus> status, Pageable pageable);
+
     // Sessões por período
     List<Sessao> findByDataHoraBetweenAndStatusInOrderByDataHoraAsc(
             Instant start,

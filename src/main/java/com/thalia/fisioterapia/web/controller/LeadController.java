@@ -1,7 +1,6 @@
 package com.thalia.fisioterapia.web.controller;
 
 import com.thalia.fisioterapia.application.service.LeadService;
-import com.thalia.fisioterapia.domain.lead.Lead;
 import com.thalia.fisioterapia.web.dto.agenda.AgendarAvaliacaoRequest;
 import com.thalia.fisioterapia.web.dto.agenda.AgendarAvaliacaoResponse;
 import com.thalia.fisioterapia.web.dto.lead.CriarLeadRequest;
@@ -44,7 +43,7 @@ public class LeadController {
     }
 
     @PostMapping("/{id}/acoes")
-    public ResponseEntity<Lead> executarAcao(
+    public ResponseEntity<LeadResponse> executarAcao(
             @PathVariable String id,
             @Valid @RequestBody ExecutarAcaoLeadRequest request
     ) {

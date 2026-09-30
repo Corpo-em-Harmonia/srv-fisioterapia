@@ -105,6 +105,13 @@ public class ApiExceptionHandler {
         return buildResponse(HttpStatus.BAD_REQUEST, ex.getMessage());
     }
 
+    // Sem isto, page<0 ou size<1 em qualquer endpoint paginado (PageRequest.of lança
+    // IllegalArgumentException) virava 500 "erro interno" em vez de um 400 de validação.
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ApiErrorResponse> handleIllegalArgument(IllegalArgumentException ex) {
+        return buildResponse(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiErrorResponse> handleUnexpected(Exception ex) {
         log.error("Erro inesperado na API", ex);

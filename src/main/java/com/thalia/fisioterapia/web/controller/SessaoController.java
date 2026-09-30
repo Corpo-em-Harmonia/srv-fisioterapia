@@ -71,11 +71,11 @@ public class SessaoController {
         Page<Sessao> sessoes;
 
         if (date != null) {
-            sessoes = sessaoService.listarPorDia(date, pageable);
+            sessoes = sessaoService.listarPorDia(date, statusFiltro, pageable);
         } else if (periodo != null) {
             sessoes = sessaoService.listarPorPeriodo(periodo, statusFiltro, pageable);
         } else {
-            sessoes = sessaoService.listarPendentes(pageable);
+            sessoes = sessaoService.listarPendentes(statusFiltro, pageable);
         }
 
         return ResponseEntity.ok(toResponsePage(sessoes));

@@ -24,9 +24,17 @@ class LeadTest {
     }
 
     @Test
-    void deveRejeitarRegistrarContatoSeNaoForNovo() {
+    void deveSerIdempotenteAoRegistrarContatoDuasVezes() {
         Lead lead = novoLead();
         lead.registrarContato();
+        lead.registrarContato();
+        assertThat(lead.getStatus()).isEqualTo(LeadStatus.CONTATADO);
+    }
+
+    @Test
+    void deveRejeitarRegistrarContatoSeJaAgendado() {
+        Lead lead = novoLead();
+        lead.marcarComoAgendado();
         assertThatThrownBy(lead::registrarContato)
                 .isInstanceOf(IllegalStateException.class);
     }

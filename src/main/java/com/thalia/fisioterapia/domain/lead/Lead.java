@@ -42,6 +42,7 @@ public class Lead {
     }
 
     public void registrarContato() {
+        if (status == LeadStatus.CONTATADO) return;
         validarEstado(LeadStatus.NOVO);
         this.status = LeadStatus.CONTATADO;
         log.info("Lead [{}] avançou para CONTATADO", id);
