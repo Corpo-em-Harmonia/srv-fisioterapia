@@ -3,8 +3,8 @@ spring:
     # Carrega segredos locais do arquivo .env (raiz do projeto, ignorado pelo git).
     # Em produção use variáveis de ambiente reais — o .env é opcional.
     import: optional:file:.env[.properties]
-  data:
-    mongodb:
-      # Sem valor padrão de propósito: nunca versionar credenciais do banco
-      # nem cair silenciosamente em localhost se a variável não estiver definida.
-      uri: ${MONGO_URI}
+  mongodb:
+    # Sem valor padrão de propósito: nunca versionar credenciais do banco
+    # nem cair silenciosamente em localhost se a variável não estiver definida.
+    # Spring Boot 4 moveu esta propriedade de spring.data.mongodb.uri para spring.mongodb.uri.
+    uri: ${MONGO_URI}
