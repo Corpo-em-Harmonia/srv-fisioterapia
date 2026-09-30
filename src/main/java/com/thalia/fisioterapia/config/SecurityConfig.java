@@ -2,6 +2,10 @@ package com.thalia.fisioterapia.config;
 
 import com.thalia.fisioterapia.security.JwtAuthFilter;
 import com.thalia.fisioterapia.security.LeadRateLimitFilter;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -24,7 +28,9 @@ import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWrite
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.web.filter.OncePerRequestFilter;
 
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 
@@ -48,7 +54,12 @@ public class SecurityConfig {
         boolean requireHttps = environment.getProperty("app.security.require-https", Boolean.class, false);
 
         if (requireHttps) {
-            http.requiresChannel(channel -> channel.anyRequest().requiresSecure());
+            // O Spring Security 7.1.1 removeu o pacote web.access.channel usado por
+            // requiresChannel()/ChannelDecisionManager (a config ainda referencia a
+            // classe, mas ela não existe mais em spring-security-web — NoClassDefFoundError
+            // em runtime). Redireciona manualmente com base em request.isSecure(), que já
+            // respeita X-Forwarded-Proto quando server.forward-headers-strategy=framework.
+            http.addFilterBefore(new RequireHttpsFilter(), UsernamePasswordAuthenticationFilter.class);
         }
 
         http
@@ -117,5 +128,21 @@ public class SecurityConfig {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;
+    }
+
+    /** Redireciona para HTTPS quando app.security.require-https=true (ver comentário em filterChain). */
+    private static class RequireHttpsFilter extends OncePerRequestFilter {
+        @Override
+        protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
+                throws ServletException, IOException {
+            if (!request.isSecure()) {
+                String query = request.getQueryString();
+                String url = "https://" + request.getServerName() + request.getRequestURI()
+                        + (query != null ? "?" + query : "");
+                response.sendRedirect(url);
+                return;
+            }
+            chain.doFilter(request, response);
+        }
     }
 }
