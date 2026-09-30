@@ -20,6 +20,8 @@ import com.thalia.fisioterapia.web.dto.sessao.RegistrarEvolucaoRequest;
 import com.thalia.fisioterapia.web.dto.sessao.SessaoHistoricoResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -134,17 +136,17 @@ public class SessaoService {
         return sessaoRepository.save(s);
     }
 
-    public List<Sessao> listarPorDia(LocalDate dia) {
+    public Page<Sessao> listarPorDia(LocalDate dia, Pageable pageable) {
         Instant start = dia.atStartOfDay(AgendaUtil.ZONE_SP).toInstant();
         Instant end = dia.plusDays(1).atStartOfDay(AgendaUtil.ZONE_SP).toInstant();
-        return sessaoRepository.findByDataHoraBetweenOrderByDataHoraAsc(start, end);
+        return sessaoRepository.findByDataHoraBetween(start, end, pageable);
     }
 
-    public List<Sessao> listarPendentes() {
-        return sessaoRepository.findPendentes(Instant.now());
+    public Page<Sessao> listarPendentes(Pageable pageable) {
+        return sessaoRepository.findPendentes(Instant.now(), pageable);
     }
 
-    public List<Sessao> listarPorPeriodo(String periodo, List<SessaoStatus> statusFiltro) {
+    public Page<Sessao> listarPorPeriodo(String periodo, List<SessaoStatus> statusFiltro, Pageable pageable) {
         LocalDate hoje = LocalDate.now(AgendaUtil.ZONE_SP);
         Instant start, end;
 
@@ -162,7 +164,7 @@ public class SessaoService {
                 end = hoje.plusMonths(1).withDayOfMonth(1).atStartOfDay(AgendaUtil.ZONE_SP).toInstant();
             }
             case "pendentes" -> {
-                return listarPendentes();
+                return listarPendentes(pageable);
             }
             case "todos" -> {
                 start = Instant.EPOCH;
@@ -172,9 +174,9 @@ public class SessaoService {
         }
 
         if (statusFiltro != null && !statusFiltro.isEmpty()) {
-            return sessaoRepository.findByDataHoraBetweenAndStatusInOrderByDataHoraAsc(start, end, statusFiltro);
+            return sessaoRepository.findByDataHoraBetweenAndStatusIn(start, end, statusFiltro, pageable);
         }
-        return sessaoRepository.findByDataHoraBetweenOrderByDataHoraAsc(start, end);
+        return sessaoRepository.findByDataHoraBetween(start, end, pageable);
     }
 
     public Map<String, Object> obterEstatisticas() {

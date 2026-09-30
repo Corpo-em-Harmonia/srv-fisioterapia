@@ -7,12 +7,13 @@ import com.thalia.fisioterapia.web.dto.usuario.ResetSenhaRequest;
 import com.thalia.fisioterapia.web.dto.usuario.UsuarioResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/usuarios")
@@ -24,8 +25,12 @@ public class UsuarioController {
     // RECEPCIONISTA recebe apenas os pacientes (filtro aplicado no service).
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN','RECEPCIONISTA')")
-    public ResponseEntity<List<UsuarioResponse>> listar() {
-        return ResponseEntity.ok(usuarioService.listar());
+    public ResponseEntity<Page<UsuarioResponse>> listar(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "50") int size
+    ) {
+        var pageable = PageRequest.of(page, size, Sort.by("criadoEm").descending());
+        return ResponseEntity.ok(usuarioService.listar(pageable));
     }
 
     // RECEPCIONISTA só pode criar PACIENTE — regra validada em UsuarioService.criar.

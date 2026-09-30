@@ -8,11 +8,12 @@ import com.thalia.fisioterapia.web.dto.lead.CriarLeadRequest;
 import com.thalia.fisioterapia.web.dto.lead.ExecutarAcaoLeadRequest;
 import com.thalia.fisioterapia.web.dto.lead.LeadResponse;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/leads")
@@ -30,11 +31,16 @@ public class LeadController {
     }
 
     @GetMapping
-    public ResponseEntity<List<LeadResponse>> listar(@RequestParam(value = "ativos", required = false) Boolean ativos) {
+    public ResponseEntity<Page<LeadResponse>> listar(
+            @RequestParam(value = "ativos", required = false) Boolean ativos,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "50") int size
+    ) {
+        var pageable = PageRequest.of(page, size, Sort.by("criadoEm").descending());
         if (Boolean.TRUE.equals(ativos)) {
-            return ResponseEntity.ok(leadService.listarAtivos());
+            return ResponseEntity.ok(leadService.listarAtivos(pageable));
         }
-        return ResponseEntity.ok(leadService.listarTodos());
+        return ResponseEntity.ok(leadService.listarTodos(pageable));
     }
 
     @PostMapping("/{id}/acoes")

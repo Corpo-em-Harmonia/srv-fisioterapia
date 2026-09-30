@@ -13,10 +13,9 @@ import com.thalia.fisioterapia.web.dto.avaliacao.AvaliacaoDetalheResponse;
 import com.thalia.fisioterapia.web.dto.avaliacao.AvaliacaoHistoricoResponse;
 import com.thalia.fisioterapia.web.dto.avaliacao.AvaliacaoPendenteResponse;
 import com.thalia.fisioterapia.web.dto.avaliacao.FinalizarAvaliacaoRequest;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
-
-import java.util.Comparator;
-import java.util.List;
 
 @Service
 public class AvaliacaoService {
@@ -85,9 +84,8 @@ public class AvaliacaoService {
         );
     }
 
-    public List<AvaliacaoPendenteResponse> listarPendentes() {
-        return sessaoRepository.findByStatusOrderByDataHoraAsc(SessaoStatus.AGUARDANDO_AVALIACAO)
-                .stream()
+    public Page<AvaliacaoPendenteResponse> listarPendentes(Pageable pageable) {
+        return sessaoRepository.findByStatus(SessaoStatus.AGUARDANDO_AVALIACAO, pageable)
                 .map(sessao -> {
                     String nome = null;
                     String telefone = null;
@@ -119,8 +117,7 @@ public class AvaliacaoService {
                             sessao.getStatus().name().toLowerCase(),
                             origem
                     );
-                })
-                .toList();
+                });
     }
 
     public AvaliacaoDetalheResponse getDetalhe(String id) {
@@ -133,10 +130,8 @@ public class AvaliacaoService {
                 .orElseThrow(() -> new ResourceNotFoundException("Avaliação não encontrada para o paciente")));
     }
 
-    public List<AvaliacaoHistoricoResponse> listarHistorico() {
-        return repository.findAll().stream()
-                .filter(avaliacao -> avaliacao.getStatus() == AvaliacaoStatus.FINALIZADA)
-                .sorted(Comparator.comparing(Avaliacao::getFinalizadaEm, Comparator.nullsLast(Comparator.naturalOrder())).reversed())
+    public Page<AvaliacaoHistoricoResponse> listarHistorico(Pageable pageable) {
+        return repository.findByStatus(AvaliacaoStatus.FINALIZADA, pageable)
                 .map(avaliacao -> {
                     String nomePaciente = "Paciente nao vinculado";
                     if (avaliacao.getPacienteId() != null && !avaliacao.getPacienteId().isBlank()) {
@@ -159,7 +154,6 @@ public class AvaliacaoService {
                             resumo,
                             avaliacao.getId()
                     );
-                })
-                .toList();
+                });
     }
 }

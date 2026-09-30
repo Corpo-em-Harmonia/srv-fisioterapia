@@ -3,6 +3,8 @@ package com.thalia.fisioterapia.infrastructure.repository.sessao;
 import com.thalia.fisioterapia.domain.sessao.Sessao;
 import com.thalia.fisioterapia.domain.sessao.SessaoStatus;
 import com.thalia.fisioterapia.domain.sessao.SessaoTipo;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.data.mongodb.repository.Query;
 
@@ -25,12 +27,27 @@ public interface SessaoRepository extends MongoRepository<Sessao, String> {
     @Query("{ 'dataHora': { $lte: ?0 }, 'status': { $in: ['MARCADA', 'REMARCADA'] } }")
     List<Sessao> findPendentes(Instant agora);
 
+    @Query("{ 'dataHora': { $lte: ?0 }, 'status': { $in: ['MARCADA', 'REMARCADA'] } }")
+    Page<Sessao> findPendentes(Instant agora, Pageable pageable);
+
     // Sessões por período
     List<Sessao> findByDataHoraBetweenAndStatusInOrderByDataHoraAsc(
             Instant start,
             Instant end,
             Collection<SessaoStatus> status
     );
+
+    // Variantes paginadas para as tabelas de agenda (evita carregar a coleção inteira em memória)
+    Page<Sessao> findByDataHoraBetween(Instant start, Instant end, Pageable pageable);
+
+    Page<Sessao> findByDataHoraBetweenAndStatusIn(
+            Instant start,
+            Instant end,
+            Collection<SessaoStatus> status,
+            Pageable pageable
+    );
+
+    Page<Sessao> findByStatus(SessaoStatus status, Pageable pageable);
 
     // Sessões por tipo
     List<Sessao> findByTipoAndDataHoraBetweenOrderByDataHoraAsc(

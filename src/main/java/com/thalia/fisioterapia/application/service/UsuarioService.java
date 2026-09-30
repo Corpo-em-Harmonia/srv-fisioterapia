@@ -11,6 +11,8 @@ import com.thalia.fisioterapia.web.dto.usuario.ResetSenhaRequest;
 import com.thalia.fisioterapia.web.dto.usuario.UsuarioResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -19,7 +21,6 @@ import org.springframework.stereotype.Service;
 
 import java.security.SecureRandom;
 import java.util.Base64;
-import java.util.List;
 
 @Slf4j
 @Service
@@ -30,11 +31,11 @@ public class UsuarioService {
     private final PasswordEncoder   passwordEncoder;
 
     /** ADMIN vê todos os usuários; qualquer outro perfil autorizado (recepção) vê só pacientes. */
-    public List<UsuarioResponse> listar() {
-        List<Usuario> usuarios = chamadorTemPapel(Role.ADMIN)
-                ? usuarioRepository.findAllByOrderByCriadoEmDesc()
-                : usuarioRepository.findAllByRoleOrderByCriadoEmDesc(Role.PACIENTE);
-        return usuarios.stream().map(this::toResponse).toList();
+    public Page<UsuarioResponse> listar(Pageable pageable) {
+        Page<Usuario> usuarios = chamadorTemPapel(Role.ADMIN)
+                ? usuarioRepository.findAll(pageable)
+                : usuarioRepository.findByRole(Role.PACIENTE, pageable);
+        return usuarios.map(this::toResponse);
     }
 
     public UsuarioResponse criar(CriarUsuarioRequest request) {

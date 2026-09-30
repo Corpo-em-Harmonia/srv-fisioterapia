@@ -12,6 +12,9 @@ import com.thalia.fisioterapia.web.dto.sessao.RemarcarSessaoResponse;
 import com.thalia.fisioterapia.web.dto.sessao.SessaoHistoricoResponse;
 import com.thalia.fisioterapia.web.dto.sessao.SessaoResponse;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -34,10 +37,12 @@ public class SessaoController {
     }
 
     @GetMapping
-    public ResponseEntity<List<SessaoResponse>> listar(
+    public ResponseEntity<Page<SessaoResponse>> listar(
             @RequestParam(required = false) String periodo,
             @RequestParam(required = false) LocalDate date,
-            @RequestParam(required = false) List<String> status
+            @RequestParam(required = false) List<String> status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "50") int size
     ) {
         List<SessaoStatus> statusFiltro = null;
         if (status != null && !status.isEmpty()) {
@@ -53,17 +58,18 @@ public class SessaoController {
                     .toList();
         }
 
-        List<Sessao> sessoes;
+        var pageable = PageRequest.of(page, size, Sort.by("dataHora").ascending());
+        Page<Sessao> sessoes;
 
         if (date != null) {
-            sessoes = sessaoService.listarPorDia(date);
+            sessoes = sessaoService.listarPorDia(date, pageable);
         } else if (periodo != null) {
-            sessoes = sessaoService.listarPorPeriodo(periodo, statusFiltro);
+            sessoes = sessaoService.listarPorPeriodo(periodo, statusFiltro, pageable);
         } else {
-            sessoes = sessaoService.listarPendentes();
+            sessoes = sessaoService.listarPendentes(pageable);
         }
 
-        return ResponseEntity.ok(sessoes.stream().map(this::toResponse).toList());
+        return ResponseEntity.ok(sessoes.map(this::toResponse));
     }
 
     @GetMapping("/estatisticas")

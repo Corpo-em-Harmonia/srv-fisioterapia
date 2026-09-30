@@ -17,6 +17,8 @@ import com.thalia.fisioterapia.web.dto.agenda.AgendarAvaliacaoResponse;
 import com.thalia.fisioterapia.web.dto.lead.CriarLeadRequest;
 import com.thalia.fisioterapia.web.dto.lead.LeadResponse;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -62,19 +64,17 @@ public class LeadService {
         return toResponse(saved);
     }
 
-    public List<LeadResponse> listarTodos() {
-        return leadRepository.findAll().stream().map(this::toResponse).toList();
+    public Page<LeadResponse> listarTodos(Pageable pageable) {
+        return leadRepository.findAll(pageable).map(this::toResponse);
     }
 
     public java.util.Optional<LeadResponse> buscarPorEmail(String email) {
         return leadRepository.findByEmail(email).map(this::toResponse);
     }
 
-    public List<LeadResponse> listarAtivos() {
-        return leadRepository.findByStatusIn(List.of(LeadStatus.NOVO, LeadStatus.CONTATADO))
-                .stream()
-                .map(this::toResponse)
-                .toList();
+    public Page<LeadResponse> listarAtivos(Pageable pageable) {
+        return leadRepository.findByStatusIn(List.of(LeadStatus.NOVO, LeadStatus.CONTATADO), pageable)
+                .map(this::toResponse);
     }
 
     @Transactional

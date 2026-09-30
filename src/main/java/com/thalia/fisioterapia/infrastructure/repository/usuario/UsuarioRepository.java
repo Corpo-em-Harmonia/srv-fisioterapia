@@ -2,9 +2,10 @@ package com.thalia.fisioterapia.infrastructure.repository.usuario;
 
 import com.thalia.fisioterapia.domain.usuario.Role;
 import com.thalia.fisioterapia.domain.usuario.Usuario;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.repository.MongoRepository;
 
-import java.util.List;
 import java.util.Optional;
 
 public interface UsuarioRepository extends MongoRepository<Usuario, String> {
@@ -15,7 +16,5 @@ public interface UsuarioRepository extends MongoRepository<Usuario, String> {
 
     boolean existsByRole(Role role);
 
-    List<Usuario> findAllByOrderByCriadoEmDesc();
-
-    List<Usuario> findAllByRoleOrderByCriadoEmDesc(Role role);
+    Page<Usuario> findByRole(Role role, Pageable pageable);
 }

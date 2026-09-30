@@ -7,10 +7,11 @@ import com.thalia.fisioterapia.web.dto.avaliacao.FinalizarAvaliacaoRequest;
 import com.thalia.fisioterapia.web.dto.avaliacao.IniciarAvaliacaoRequest;
 import com.thalia.fisioterapia.application.service.AvaliacaoService;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/avaliacoes")
@@ -35,13 +36,21 @@ public class AvaliacaoController {
     }
 
     @GetMapping("/pendentes")
-    public ResponseEntity<List<AvaliacaoPendenteResponse>> pendentes() {
-        return ResponseEntity.ok(avaliacaoService.listarPendentes());
+    public ResponseEntity<Page<AvaliacaoPendenteResponse>> pendentes(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "50") int size
+    ) {
+        var pageable = PageRequest.of(page, size, Sort.by("dataHora").ascending());
+        return ResponseEntity.ok(avaliacaoService.listarPendentes(pageable));
     }
 
     @GetMapping("/historico")
-    public ResponseEntity<List<AvaliacaoHistoricoResponse>> historico() {
-        return ResponseEntity.ok(avaliacaoService.listarHistorico());
+    public ResponseEntity<Page<AvaliacaoHistoricoResponse>> historico(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "50") int size
+    ) {
+        var pageable = PageRequest.of(page, size, Sort.by("finalizadaEm").descending());
+        return ResponseEntity.ok(avaliacaoService.listarHistorico(pageable));
     }
 
     @GetMapping("/{id}")

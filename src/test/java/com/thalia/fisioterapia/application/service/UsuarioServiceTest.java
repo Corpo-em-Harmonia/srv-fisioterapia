@@ -9,6 +9,9 @@ import com.thalia.fisioterapia.web.dto.usuario.ResetSenhaRequest;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -104,22 +107,24 @@ class UsuarioServiceTest {
     @Test
     void recepcionistaListaApenasPacientes() {
         autenticarComo(Role.RECEPCIONISTA);
-        when(repository.findAllByRoleOrderByCriadoEmDesc(Role.PACIENTE)).thenReturn(List.of());
+        Pageable pageable = PageRequest.of(0, 50);
+        when(repository.findByRole(Role.PACIENTE, pageable)).thenReturn(new PageImpl<>(List.of()));
 
-        service.listar();
+        service.listar(pageable);
 
-        verify(repository).findAllByRoleOrderByCriadoEmDesc(Role.PACIENTE);
-        verify(repository, never()).findAllByOrderByCriadoEmDesc();
+        verify(repository).findByRole(Role.PACIENTE, pageable);
+        verify(repository, never()).findAll(any(Pageable.class));
     }
 
     @Test
     void adminListaTodos() {
         autenticarComo(Role.ADMIN);
-        when(repository.findAllByOrderByCriadoEmDesc()).thenReturn(List.of());
+        Pageable pageable = PageRequest.of(0, 50);
+        when(repository.findAll(pageable)).thenReturn(new PageImpl<>(List.of()));
 
-        service.listar();
+        service.listar(pageable);
 
-        verify(repository).findAllByOrderByCriadoEmDesc();
+        verify(repository).findAll(pageable);
     }
 
     @Test
