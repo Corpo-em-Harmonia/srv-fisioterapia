@@ -182,7 +182,8 @@ class LeadServiceTest {
                 modoAgendamento,
                 frequenciaSemanal,
                 quantidadeSessoes,
-                validadeGuiaDias
+                validadeGuiaDias,
+                null
         );
     }
 }

@@ -13,5 +13,7 @@ public record SessaoResponse(
         String tipo,
         String serieId,
         Integer numeroOcorrencia,
-        SessaoEvolucao evolucao
+        SessaoEvolucao evolucao,
+        String fisioterapeutaId,
+        String fisioterapeutaNome
 ) {}

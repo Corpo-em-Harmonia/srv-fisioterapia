@@ -101,6 +101,9 @@ public class SessaoService {
                 .orElseThrow(() -> new ResourceNotFoundException("Lead não encontrado"));
 
         Paciente paciente = Paciente.fromLead(lead);
+        if (sessao.getFisioterapeutaId() != null) {
+            paciente.atribuirFisioterapeuta(sessao.getFisioterapeutaId());
+        }
         paciente = pacienteRepository.save(paciente);
 
         sessao.setPaciente(paciente.getId());
@@ -252,7 +255,7 @@ public class SessaoService {
                     ? novaDataHora
                     : sessao.getDataHora().plus(deslocamento);
             AgendaUtil.validarJanela(destino);
-            validarConflitosAgenda(destino, sessao.getId(), idsAfetados);
+            validarConflitosAgenda(destino, sessao.getId(), idsAfetados, sessao.getFisioterapeutaId());
             novosHorarios.put(sessao.getId(), destino);
         }
 
@@ -327,11 +330,19 @@ public class SessaoService {
                 .toList();
     }
 
-    private void validarConflitosAgenda(Instant dataHora, String sessaoAtualId, Set<String> idsDaMesmaOperacao) {
+    private void validarConflitosAgenda(Instant dataHora, String sessaoAtualId, Set<String> idsDaMesmaOperacao, String fisioterapeutaId) {
         List<Sessao> conflitos = sessaoRepository.findByDataHoraAndStatusIn(dataHora, AgendaUtil.STATUS_CONFLITO).stream()
                 .filter(s -> !s.getId().equals(sessaoAtualId))
                 .filter(s -> !idsDaMesmaOperacao.contains(s.getId()))
                 .toList();
+
+        if (fisioterapeutaId != null && !fisioterapeutaId.isBlank()) {
+            boolean fisioOcupada = conflitos.stream()
+                    .anyMatch(s -> fisioterapeutaId.equals(s.getFisioterapeutaId()));
+            if (fisioOcupada) {
+                throw new AgendaConflictException("Fisioterapeuta já possui um atendimento nesse horário", List.of());
+            }
+        }
 
         if (conflitos.size() < AgendaUtil.MAX_POR_HORARIO) {
             return;

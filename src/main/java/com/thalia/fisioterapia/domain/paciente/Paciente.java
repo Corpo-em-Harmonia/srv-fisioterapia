@@ -30,6 +30,7 @@ public class Paciente {
     private LocalDateTime criadoEm;
     private int totalFaltas = 0;
     private int totalComparecimentos = 0;
+    private String fisioterapeutaId;
 
     private Paciente() {
         // construtor para o Mongo
@@ -60,5 +61,9 @@ public class Paciente {
 
     public void incrementarComparecimentos() {
         this.totalComparecimentos++;
+    }
+
+    public void atribuirFisioterapeuta(String fisioterapeutaId) {
+        this.fisioterapeutaId = fisioterapeutaId;
     }
 }

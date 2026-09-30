@@ -5,6 +5,7 @@ import com.thalia.fisioterapia.domain.sessao.Sessao;
 import com.thalia.fisioterapia.domain.sessao.SessaoStatus;
 import com.thalia.fisioterapia.infrastructure.repository.lead.LeadRepository;
 import com.thalia.fisioterapia.infrastructure.repository.paciente.PacienteRepository;
+import com.thalia.fisioterapia.infrastructure.repository.usuario.UsuarioRepository;
 import com.thalia.fisioterapia.web.dto.avaliacao.IniciarAvaliacaoResponse;
 import com.thalia.fisioterapia.web.dto.sessao.RegistrarEvolucaoRequest;
 import com.thalia.fisioterapia.web.dto.sessao.RemarcarSessaoRequest;
@@ -26,11 +27,14 @@ public class SessaoController {
     private final SessaoService sessaoService;
     private final PacienteRepository pacienteRepository;
     private final LeadRepository leadRepository;
+    private final UsuarioRepository usuarioRepository;
 
-    public SessaoController(SessaoService sessaoService, PacienteRepository pacienteRepository, LeadRepository leadRepository) {
+    public SessaoController(SessaoService sessaoService, PacienteRepository pacienteRepository,
+                             LeadRepository leadRepository, UsuarioRepository usuarioRepository) {
         this.sessaoService = sessaoService;
         this.pacienteRepository = pacienteRepository;
         this.leadRepository = leadRepository;
+        this.usuarioRepository = usuarioRepository;
     }
 
     @GetMapping
@@ -136,6 +140,10 @@ public class SessaoController {
             if (l != null) { nome = l.getNome(); telefone = l.getTelefone(); }
         }
 
+        String fisioterapeutaNome = s.getFisioterapeutaId() != null
+                ? usuarioRepository.findById(s.getFisioterapeutaId()).map(u -> u.getNome()).orElse(null)
+                : null;
+
         return new SessaoResponse(
                 s.getId(),
                 s.getLeadId(),
@@ -147,7 +155,9 @@ public class SessaoController {
                 s.getTipo().name().toLowerCase(),
                 s.getSerieId(),
                 s.getNumeroOcorrencia(),
-                s.getEvolucao()
+                s.getEvolucao(),
+                s.getFisioterapeutaId(),
+                fisioterapeutaNome
         );
     }
 }

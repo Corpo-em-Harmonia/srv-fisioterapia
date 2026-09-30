@@ -28,6 +28,13 @@ public class UsuarioController {
         return ResponseEntity.ok(usuarioService.listar());
     }
 
+    // Usado pela recepção para escolher a fisio responsável ao agendar uma avaliação.
+    @GetMapping("/fisioterapeutas")
+    @PreAuthorize("hasAnyRole('ADMIN','RECEPCIONISTA')")
+    public ResponseEntity<List<UsuarioResponse>> listarFisioterapeutas() {
+        return ResponseEntity.ok(usuarioService.listarFisioterapeutas());
+    }
+
     // RECEPCIONISTA só pode criar PACIENTE — regra validada em UsuarioService.criar.
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN','RECEPCIONISTA')")

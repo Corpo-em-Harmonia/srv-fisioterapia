@@ -37,6 +37,13 @@ public class UsuarioService {
         return usuarios.stream().map(this::toResponse).toList();
     }
 
+    public List<UsuarioResponse> listarFisioterapeutas() {
+        return usuarioRepository.findAllByRoleOrderByCriadoEmDesc(Role.FISIOTERAPEUTA).stream()
+                .filter(Usuario::isAtivo)
+                .map(this::toResponse)
+                .toList();
+    }
+
     public UsuarioResponse criar(CriarUsuarioRequest request) {
         exigirPermissaoParaCriar(request.role());
 

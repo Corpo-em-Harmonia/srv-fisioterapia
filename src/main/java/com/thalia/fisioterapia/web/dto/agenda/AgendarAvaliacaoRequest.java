@@ -16,5 +16,6 @@ public record AgendarAvaliacaoRequest(
         String modoAgendamento,
         @Min(1) @Max(7) Integer frequenciaSemanal,
         @Positive Integer quantidadeSessoes,
-        @Positive Integer validadeGuiaDias
+        @Positive Integer validadeGuiaDias,
+        String fisioterapeutaId
 ) {}

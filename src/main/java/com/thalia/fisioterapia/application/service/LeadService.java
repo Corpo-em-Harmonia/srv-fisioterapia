@@ -132,12 +132,15 @@ public class LeadService {
             AgendaUtil.validarJanela(dataHoraOcorrencia);
 
             Instant dataHoraInstant = dataHoraOcorrencia.atZone(AgendaUtil.ZONE_SP).toInstant();
-            validarConflitosAgenda(dataHoraInstant);
+            validarConflitosAgenda(dataHoraInstant, req.fisioterapeutaId());
 
             SessaoTipo tipoSessao = (i == 0) ? SessaoTipo.AVALIACAO : SessaoTipo.SESSAO;
             Sessao sessao = new Sessao(lead.getId(), tipoSessao, dataHoraInstant, req.observacao());
 
             if (serieId != null) sessao.definirSerie(serieId, i + 1);
+            if (req.fisioterapeutaId() != null && !req.fisioterapeutaId().isBlank()) {
+                sessao.atribuirFisioterapeuta(req.fisioterapeutaId());
+            }
             sessoesParaSalvar.add(sessao);
         }
 
@@ -154,8 +157,17 @@ public class LeadService {
         );
     }
 
-    private void validarConflitosAgenda(Instant dataHora) {
+    private void validarConflitosAgenda(Instant dataHora, String fisioterapeutaId) {
         List<Sessao> conflitos = sessaoRepository.findByDataHoraAndStatusIn(dataHora, AgendaUtil.STATUS_CONFLITO);
+
+        if (fisioterapeutaId != null && !fisioterapeutaId.isBlank()) {
+            boolean fisioOcupada = conflitos.stream()
+                    .anyMatch(s -> fisioterapeutaId.equals(s.getFisioterapeutaId()));
+            if (fisioOcupada) {
+                throw new AgendaConflictException("Fisioterapeuta já possui um atendimento nesse horário", List.of());
+            }
+        }
+
         if (conflitos.size() >= AgendaUtil.MAX_POR_HORARIO) {
             List<AgendaConflictException.ConflitoAgendaItem> itens = conflitos.stream()
                     .map(s -> new AgendaConflictException.ConflitoAgendaItem(
