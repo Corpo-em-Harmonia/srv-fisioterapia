@@ -3,6 +3,7 @@ package com.thalia.fisioterapia.application.service;
 import com.thalia.fisioterapia.application.exception.AgendaConflictException;
 import com.thalia.fisioterapia.application.exception.BusinessException;
 import com.thalia.fisioterapia.application.exception.ResourceNotFoundException;
+import com.thalia.fisioterapia.domain.avaliacao.Avaliacao;
 import com.thalia.fisioterapia.domain.paciente.Paciente;
 import com.thalia.fisioterapia.domain.sessao.DiaSemanaPreferido;
 import com.thalia.fisioterapia.domain.sessao.ModoAgendamento;
@@ -28,10 +29,15 @@ import java.time.DayOfWeek;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -69,9 +75,26 @@ public class PacienteService {
             pagina = pacienteRepository.findAll(pageable);
         }
 
+        // Busca em lote (findByPacienteIdIn / findByPacienteIdInOrder...) em vez de 3 consultas
+        // por paciente — evita repetir o N+1 que deixava /api/sessoes lento com paginas grandes.
+        var pacienteIds = pagina.getContent().stream().map(Paciente::getId).toList();
+
+        Map<String, List<Sessao>> sessoesPorPaciente = sessaoRepository
+                .findByPacienteIdInOrderByDataHoraAsc(pacienteIds).stream()
+                .collect(Collectors.groupingBy(Sessao::getPacienteId));
+
+        Map<String, Avaliacao> ultimaAvaliacaoPorPaciente = avaliacaoRepository
+                .findByPacienteIdInOrderByCriadaEmDesc(pacienteIds).stream()
+                .collect(Collectors.toMap(Avaliacao::getPacienteId, av -> av, (primeira, outra) -> primeira));
+
+        var fisioterapeutaIds = pagina.getContent().stream()
+                .map(Paciente::getFisioterapeutaId).filter(Objects::nonNull).collect(Collectors.toSet());
+        Map<String, Usuario> fisiosPorId = new HashMap<>();
+        usuarioRepository.findAllById(fisioterapeutaIds).forEach(u -> fisiosPorId.put(u.getId(), u));
+
         List<PacienteAtivoResponse> content = pagina.getContent().stream()
                 .map(paciente -> {
-                    var sessoes = sessaoRepository.findByPacienteIdOrderByDataHoraAsc(paciente.getId());
+                    List<Sessao> sessoes = sessoesPorPaciente.getOrDefault(paciente.getId(), List.of());
 
                     Instant ultimaSessao = sessoes.stream()
                             .map(Sessao::getDataHora)
@@ -85,11 +108,10 @@ public class PacienteService {
                             .findFirst()
                             .orElse(null);
 
-                    String statusClinico = avaliacaoRepository
-                            .findFirstByPacienteIdOrderByCriadaEmDesc(paciente.getId())
-                            .map(av -> av.getStatus() != null
-                                    ? av.getStatus().name().toLowerCase() : "sem_avaliacao")
-                            .orElse("sem_avaliacao");
+                    Avaliacao ultimaAvaliacao = ultimaAvaliacaoPorPaciente.get(paciente.getId());
+                    String statusClinico = ultimaAvaliacao != null && ultimaAvaliacao.getStatus() != null
+                            ? ultimaAvaliacao.getStatus().name().toLowerCase()
+                            : "sem_avaliacao";
 
                     long sessoesRealizadas = sessoes.stream()
                             .filter(s -> s.getStatus() == SessaoStatus.REALIZADA
@@ -98,7 +120,7 @@ public class PacienteService {
                             .count();
 
                     String fisioterapeutaNome = paciente.getFisioterapeutaId() != null
-                            ? usuarioRepository.findById(paciente.getFisioterapeutaId())
+                            ? Optional.ofNullable(fisiosPorId.get(paciente.getFisioterapeutaId()))
                                     .map(Usuario::getNome).orElse(null)
                             : null;
 

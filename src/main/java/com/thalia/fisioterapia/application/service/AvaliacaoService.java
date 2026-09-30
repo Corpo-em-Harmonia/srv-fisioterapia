@@ -12,10 +12,18 @@ import com.thalia.fisioterapia.infrastructure.repository.lead.LeadRepository;
 import com.thalia.fisioterapia.web.dto.avaliacao.AvaliacaoDetalheResponse;
 import com.thalia.fisioterapia.web.dto.avaliacao.AvaliacaoHistoricoResponse;
 import com.thalia.fisioterapia.web.dto.avaliacao.AvaliacaoPendenteResponse;
+import com.thalia.fisioterapia.domain.lead.Lead;
+import com.thalia.fisioterapia.domain.paciente.Paciente;
 import com.thalia.fisioterapia.web.dto.avaliacao.FinalizarAvaliacaoRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Objects;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 public class AvaliacaoService {
@@ -85,39 +93,59 @@ public class AvaliacaoService {
     }
 
     public Page<AvaliacaoPendenteResponse> listarPendentes(Pageable pageable) {
-        return sessaoRepository.findByStatus(SessaoStatus.AGUARDANDO_AVALIACAO, pageable)
-                .map(sessao -> {
-                    String nome = null;
-                    String telefone = null;
-                    String origem;
+        Page<com.thalia.fisioterapia.domain.sessao.Sessao> sessoes =
+                sessaoRepository.findByStatus(SessaoStatus.AGUARDANDO_AVALIACAO, pageable);
 
-                    if (sessao.getLeadId() != null) {
-                        origem = "LEAD";
-                        var lead = leadRepository.findById(sessao.getLeadId()).orElse(null);
-                        if (lead != null) {
-                            nome = lead.getNome();
-                            telefone = lead.getTelefone();
-                        }
-                    } else {
-                        origem = "PACIENTE";
-                        var paciente = pacienteRepository.findById(sessao.getPacienteId()).orElse(null);
-                        if (paciente != null) {
-                            nome = paciente.getNome();
-                            telefone = paciente.getTelefone();
-                        }
-                    }
+        // Busca em lote (findAllById) em vez de uma consulta por sessao, pra nao repetir
+        // o N+1 que deixava /api/sessoes lento com paginas grandes.
+        var leadIds = sessoes.getContent().stream()
+                .map(com.thalia.fisioterapia.domain.sessao.Sessao::getLeadId).filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        var pacienteIds = sessoes.getContent().stream()
+                .map(com.thalia.fisioterapia.domain.sessao.Sessao::getPacienteId).filter(Objects::nonNull)
+                .collect(Collectors.toSet());
 
-                    return new AvaliacaoPendenteResponse(
-                            sessao.getId(),
-                            sessao.getLeadId(),
-                            sessao.getPacienteId(),
-                            nome,
-                            telefone,
-                            sessao.getDataHora().toString(),
-                            sessao.getStatus().name().toLowerCase(),
-                            origem
-                    );
-                });
+        Map<String, Lead> leadsPorId = toMapById(leadRepository.findAllById(leadIds), Lead::getId);
+        Map<String, Paciente> pacientesPorId = toMapById(pacienteRepository.findAllById(pacienteIds), Paciente::getId);
+
+        return sessoes.map(sessao -> {
+            String nome = null;
+            String telefone = null;
+            String origem;
+
+            if (sessao.getLeadId() != null) {
+                origem = "LEAD";
+                var lead = leadsPorId.get(sessao.getLeadId());
+                if (lead != null) {
+                    nome = lead.getNome();
+                    telefone = lead.getTelefone();
+                }
+            } else {
+                origem = "PACIENTE";
+                var paciente = pacientesPorId.get(sessao.getPacienteId());
+                if (paciente != null) {
+                    nome = paciente.getNome();
+                    telefone = paciente.getTelefone();
+                }
+            }
+
+            return new AvaliacaoPendenteResponse(
+                    sessao.getId(),
+                    sessao.getLeadId(),
+                    sessao.getPacienteId(),
+                    nome,
+                    telefone,
+                    sessao.getDataHora().toString(),
+                    sessao.getStatus().name().toLowerCase(),
+                    origem
+            );
+        });
+    }
+
+    private <T> Map<String, T> toMapById(Iterable<T> itens, Function<T, String> idExtractor) {
+        Map<String, T> mapa = new HashMap<>();
+        itens.forEach(item -> mapa.put(idExtractor.apply(item), item));
+        return mapa;
     }
 
     public AvaliacaoDetalheResponse getDetalhe(String id) {
@@ -131,13 +159,21 @@ public class AvaliacaoService {
     }
 
     public Page<AvaliacaoHistoricoResponse> listarHistorico(Pageable pageable) {
-        return repository.findByStatus(AvaliacaoStatus.FINALIZADA, pageable)
-                .map(avaliacao -> {
+        Page<Avaliacao> avaliacoes = repository.findByStatus(AvaliacaoStatus.FINALIZADA, pageable);
+
+        var pacienteIds = avaliacoes.getContent().stream()
+                .map(Avaliacao::getPacienteId)
+                .filter(id -> id != null && !id.isBlank())
+                .collect(Collectors.toSet());
+        Map<String, Paciente> pacientesPorId = toMapById(pacienteRepository.findAllById(pacienteIds), Paciente::getId);
+
+        return avaliacoes.map(avaliacao -> {
                     String nomePaciente = "Paciente nao vinculado";
                     if (avaliacao.getPacienteId() != null && !avaliacao.getPacienteId().isBlank()) {
-                        nomePaciente = pacienteRepository.findById(avaliacao.getPacienteId())
-                                .map(p -> p.getNome() + (p.getSobrenome() != null ? " " + p.getSobrenome() : ""))
-                                .orElse("Paciente nao encontrado");
+                        Paciente p = pacientesPorId.get(avaliacao.getPacienteId());
+                        nomePaciente = p != null
+                                ? p.getNome() + (p.getSobrenome() != null ? " " + p.getSobrenome() : "")
+                                : "Paciente nao encontrado";
                     }
 
                     String resumo = avaliacao.getDesfecho();

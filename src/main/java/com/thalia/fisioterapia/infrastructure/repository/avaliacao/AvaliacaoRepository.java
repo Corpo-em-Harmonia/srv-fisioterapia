@@ -16,4 +16,6 @@ public interface AvaliacaoRepository extends MongoRepository<Avaliacao, String> 
     Optional<Avaliacao> findFirstByPacienteIdOrderByCriadaEmDesc(String pacienteId);
 
     Page<Avaliacao> findByStatus(AvaliacaoStatus status, Pageable pageable);
+
+    java.util.List<Avaliacao> findByPacienteIdInOrderByCriadaEmDesc(java.util.Collection<String> pacienteIds);
 }
