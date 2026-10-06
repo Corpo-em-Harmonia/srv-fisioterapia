@@ -22,6 +22,8 @@ import org.springframework.stereotype.Service;
 import java.security.SecureRandom;
 import java.util.Base64;
 import java.util.List;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 @Slf4j
 @Service
@@ -47,7 +49,8 @@ public class UsuarioService {
     }
 
     public UsuarioResponse criar(CriarUsuarioRequest request) {
-        exigirPermissaoParaCriar(request.role());
+        Set<Role> roles = resolverRoles(request.role(), request.roles());
+        exigirPermissaoParaCriar(roles);
         String email = normalizarEmail(request.email());
 
         if (usuarioRepository.existsByEmail(email)) {
@@ -58,11 +61,11 @@ public class UsuarioService {
                 request.nome(),
                 email,
                 passwordEncoder.encode(request.senha()),
-                request.role()
+                roles
         );
 
         Usuario saved = usuarioRepository.save(usuario);
-        log.info("Usuário criado: email={} role={}", saved.getEmail(), saved.getRole());
+        log.info("Usuário criado: email={} roles={}", saved.getEmail(), saved.getRoles());
         return toResponse(saved);
     }
 
@@ -78,7 +81,7 @@ public class UsuarioService {
 
         usuario.setNome(request.nome());
         usuario.setEmail(email);
-        usuario.setRole(request.role());
+        usuario.setRoles(resolverRoles(request.role(), request.roles()));
         Usuario saved = usuarioRepository.save(usuario);
         log.info("Usuário [{}] atualizado por admin", saved.getEmail());
         return toResponse(saved);
@@ -116,7 +119,7 @@ public class UsuarioService {
         Usuario usuario = usuarioRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado"));
 
-        if (!chamadorTemPapel(Role.ADMIN) && usuario.getRole() != Role.PACIENTE) {
+        if (!chamadorTemPapel(Role.ADMIN) && !usuario.getRoles().contains(Role.PACIENTE)) {
             throw new AccessDeniedException("Você só pode redefinir a senha de pacientes.");
         }
 
@@ -129,14 +132,15 @@ public class UsuarioService {
      * Regra de negócio (não só de rota): ADMIN cria qualquer perfil; RECEPCIONISTA só cria PACIENTE.
      * Fica aqui para que um recepcionista não consiga criar ADMIN enviando role: "ADMIN".
      */
-    private void exigirPermissaoParaCriar(Role roleSolicitado) {
+    private void exigirPermissaoParaCriar(Set<Role> rolesSolicitadas) {
         if (chamadorTemPapel(Role.ADMIN)) {
             return;
         }
-        if (chamadorTemPapel(Role.RECEPCIONISTA) && roleSolicitado == Role.PACIENTE) {
+        if (chamadorTemPapel(Role.RECEPCIONISTA) && rolesSolicitadas.size() == 1
+            && rolesSolicitadas.contains(Role.PACIENTE)) {
             return;
         }
-        log.warn("Criação de usuário negada: chamador={} role solicitado={}", chamadorAtual(), roleSolicitado);
+        log.warn("Criação de usuário negada: chamador={} roles solicitadas={}", chamadorAtual(), rolesSolicitadas);
         throw new AccessDeniedException("Você só pode cadastrar usuários com o perfil Paciente.");
     }
 
@@ -158,6 +162,16 @@ public class UsuarioService {
                 && auth.isAuthenticated()
                 && auth.getAuthorities().stream()
                         .anyMatch(a -> a.getAuthority().equals("ROLE_" + role.name()));
+    }
+
+    private Set<Role> resolverRoles(Role role, List<Role> roles) {
+        Set<Role> resolvidas = new LinkedHashSet<>();
+        if (roles != null) resolvidas.addAll(roles);
+        if (resolvidas.isEmpty() && role != null) resolvidas.add(role);
+        if (resolvidas.isEmpty()) {
+            throw new IllegalArgumentException("Informe pelo menos um perfil");
+        }
+        return resolvidas;
     }
 
     private String chamadorAtual() {
@@ -182,6 +196,7 @@ public class UsuarioService {
                 u.getNome(),
                 u.getEmail(),
                 u.getRole().name().toLowerCase(),
+                u.getRoles().stream().map(role -> role.name().toLowerCase()).toList(),
                 u.isAtivo(),
                 u.getCriadoEm()
         );

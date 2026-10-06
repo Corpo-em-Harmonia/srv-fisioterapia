@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
+import java.util.List;
 
 @Slf4j
 @Service
@@ -44,13 +45,18 @@ public class JwtService {
     private static final String AUDIENCE = "fisioterapia-client";
 
     public String generateToken(String email, String role, String nome) {
+        return generateToken(email, List.of(role), nome);
+    }
+
+    public String generateToken(String email, List<String> roles, String nome) {
         Date now    = new Date();
         Date expiry = new Date(now.getTime() + expirationSeconds * 1000L);
         return Jwts.builder()
                 .issuer(ISSUER)
                 .audience().add(AUDIENCE).and()
                 .subject(email)
-                .claim("role", role)
+                .claim("role", roles.get(0))
+                .claim("roles", roles)
                 .claim("nome", nome)
                 .issuedAt(now)
                 .notBefore(now)
