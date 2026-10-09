@@ -16,6 +16,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.ArrayList;
 
 @Component
 @RequiredArgsConstructor
@@ -35,7 +36,10 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             if (jwtService.isValid(token)) {
                 Claims claims = jwtService.parseToken(token);
                 String email = claims.getSubject();
-                String role  = claims.get("role", String.class);
+                List<String> roles = claims.get("roles", List.class);
+                if (roles == null || roles.isEmpty()) {
+                    roles = List.of(claims.get("role", String.class));
+                }
 
                 boolean ativo = usuarioRepository.findByEmail(email)
                         .map(Usuario::isAtivo)
@@ -44,7 +48,9 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 if (ativo) {
                     var auth = new UsernamePasswordAuthenticationToken(
                             email, null,
-                            List.of(new SimpleGrantedAuthority("ROLE_" + role))
+                                roles.stream()
+                                    .map(role -> new SimpleGrantedAuthority("ROLE_" + role))
+                                    .toList()
                     );
                     SecurityContextHolder.getContext().setAuthentication(auth);
                 }

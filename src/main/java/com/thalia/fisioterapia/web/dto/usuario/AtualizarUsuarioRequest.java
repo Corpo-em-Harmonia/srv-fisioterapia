@@ -6,6 +6,8 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
+import java.util.List;
+
 public record AtualizarUsuarioRequest(
         @NotBlank(message = "Nome é obrigatório")
         @Size(min = 2, max = 100, message = "Nome deve ter entre 2 e 100 caracteres")
@@ -16,6 +18,11 @@ public record AtualizarUsuarioRequest(
         @Size(max = 150, message = "E-mail deve ter no máximo 150 caracteres")
         String email,
 
-        @NotNull(message = "Perfil é obrigatório")
-        Role role
-) {}
+                Role role,
+
+                List<Role> roles
+) {
+        public AtualizarUsuarioRequest(String nome, String email, Role role) {
+                this(nome, email, role, null);
+        }
+}

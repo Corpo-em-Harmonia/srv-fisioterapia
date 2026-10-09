@@ -26,7 +26,9 @@ public class MongoUserDetailsService implements UserDetailsService {
                 .username(usuario.getEmail())
                 .password(usuario.getSenha())
                 .disabled(!usuario.isAtivo())
-                .authorities(List.of(new SimpleGrantedAuthority("ROLE_" + usuario.getRole().name())))
+                .authorities(usuario.getRoles().stream()
+                    .map(role -> new SimpleGrantedAuthority("ROLE_" + role.name()))
+                    .toList())
                 .build();
     }
 }

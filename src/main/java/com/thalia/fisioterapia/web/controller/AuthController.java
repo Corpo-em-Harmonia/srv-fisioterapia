@@ -22,6 +22,8 @@ import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @Slf4j
 @RestController
 @RequestMapping("/api/auth")
@@ -49,20 +51,21 @@ public class AuthController {
                     new UsernamePasswordAuthenticationToken(request.email(), request.password())
             );
 
-            String role = auth.getAuthorities().stream()
-                    .findFirst()
+                List<String> roles = auth.getAuthorities().stream()
                     .map(GrantedAuthority::getAuthority)
                     .map(a -> a.replace("ROLE_", ""))
-                    .orElse("RECEPCIONISTA");
+                    .toList();
+                String role = roles.stream().findFirst().orElse("RECEPCIONISTA");
 
             String nome = usuarioRepository.findByEmail(request.email())
                     .map(Usuario::getNome)
                     .orElse(request.email());
 
             loginAttemptService.registrarSucesso(ip);
-            String token = jwtService.generateToken(request.email(), role, nome);
-            log.info("Login realizado: email={} role={}", request.email(), role);
-            return ResponseEntity.ok(new LoginResponse(token, role.toLowerCase(), nome));
+            String token = jwtService.generateToken(request.email(), roles, nome);
+            log.info("Login realizado: email={} roles={}", request.email(), roles);
+                return ResponseEntity.ok(new LoginResponse(token, role.toLowerCase(),
+                    roles.stream().map(String::toLowerCase).toList(), nome));
 
         } catch (DisabledException e) {
             // Mesmo status/resposta de credenciais inválidas — devolver 403 aqui permitiria

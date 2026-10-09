@@ -19,6 +19,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.List;
+import java.util.Set;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -55,6 +56,10 @@ class UsuarioServiceTest {
         return new CriarUsuarioRequest("Fulano", "fulano@clinica.com", "senha1234", role);
     }
 
+    private CriarUsuarioRequest pedido(List<Role> roles) {
+        return new CriarUsuarioRequest("Fulano", "fulano@clinica.com", "senha1234", null, roles);
+    }
+
     @Test
     void recepcionistaNaoPodeCriarAdmin() {
         autenticarComo(Role.RECEPCIONISTA);
@@ -78,6 +83,29 @@ class UsuarioServiceTest {
         autenticarComo(Role.ADMIN);
 
         assertThat(service.criar(pedido(Role.ADMIN)).role()).isEqualTo("admin");
+    }
+
+    @Test
+    void adminPodeCriarContaComMaisDeUmaRole() {
+        autenticarComo(Role.ADMIN);
+
+        var resposta = service.criar(pedido(List.of(Role.FISIOTERAPEUTA, Role.RECEPCIONISTA)));
+
+        assertThat(resposta.roles()).containsExactly("fisioterapeuta", "recepcionista");
+        assertThat(resposta.role()).isEqualTo("fisioterapeuta");
+    }
+
+    @Test
+    void adminPodeAtualizarRolesDeContaExistente() {
+        autenticarComo(Role.ADMIN);
+        Usuario usuario = new Usuario("Fulano", "fulano@clinica.com", "hash", Role.PACIENTE);
+        when(repository.findById("1")).thenReturn(Optional.of(usuario));
+
+        var resposta = service.atualizar("1", new com.thalia.fisioterapia.web.dto.usuario.AtualizarUsuarioRequest(
+                "Fulano", "fulano@clinica.com", null, List.of(Role.FISIOTERAPEUTA, Role.RECEPCIONISTA)));
+
+        assertThat(resposta.roles()).containsExactly("fisioterapeuta", "recepcionista");
+        assertThat(usuario.getRoles()).isEqualTo(Set.of(Role.FISIOTERAPEUTA, Role.RECEPCIONISTA));
     }
 
     @Test
