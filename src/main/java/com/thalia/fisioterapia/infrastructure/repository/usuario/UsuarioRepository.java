@@ -16,7 +16,7 @@ public interface UsuarioRepository extends MongoRepository<Usuario, String> {
 
     boolean existsByEmail(String email);
 
-    @Query("{ '$or': [ { 'roles': ?0 }, { 'role': ?0 } ] }")
+    @Query(value = "{ '$or': [ { 'roles': ?0 }, { 'role': ?0 } ] }", exists = true)
     boolean existsByRole(Role role);
 
     @Query(value = "{ '$or': [ { 'roles': ?0 }, { 'role': ?0 } ] }")
