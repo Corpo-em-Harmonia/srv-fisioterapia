@@ -15,6 +15,7 @@ import com.thalia.fisioterapia.web.dto.sessao.RemarcarSessaoRequest;
 import com.thalia.fisioterapia.web.dto.sessao.RemarcarSessaoResponse;
 import com.thalia.fisioterapia.web.dto.sessao.SessaoHistoricoResponse;
 import com.thalia.fisioterapia.web.dto.sessao.SessaoResponse;
+import com.thalia.fisioterapia.web.dto.sessao.SessaoEstatisticasResponse;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -82,7 +83,7 @@ public class SessaoController {
     }
 
     @GetMapping("/estatisticas")
-    public ResponseEntity<Map<String, Object>> estatisticas() {
+    public ResponseEntity<SessaoEstatisticasResponse> estatisticas() {
         return ResponseEntity.ok(sessaoService.obterEstatisticas());
     }
 

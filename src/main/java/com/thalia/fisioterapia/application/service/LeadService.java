@@ -152,7 +152,7 @@ public class LeadService {
                 modoAgendamento.name().toLowerCase(),
                 serieId,
                 salvas.size(),
-                salvas.get(0).getId(),
+                salvas.getFirst().getId(),
                 "Agendamento criado com sucesso"
         );
     }

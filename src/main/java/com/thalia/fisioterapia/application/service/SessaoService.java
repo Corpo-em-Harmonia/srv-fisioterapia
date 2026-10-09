@@ -18,6 +18,7 @@ import com.thalia.fisioterapia.domain.sessao.SessaoEvolucao;
 import com.thalia.fisioterapia.web.dto.avaliacao.IniciarAvaliacaoResponse;
 import com.thalia.fisioterapia.web.dto.sessao.DisponibilidadeResponse;
 import com.thalia.fisioterapia.web.dto.sessao.RegistrarEvolucaoRequest;
+import com.thalia.fisioterapia.web.dto.sessao.SessaoEstatisticasResponse;
 import com.thalia.fisioterapia.web.dto.sessao.SessaoHistoricoResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Lazy;
@@ -246,7 +247,7 @@ public class SessaoService {
         return resposta;
     }
 
-    public Map<String, Object> obterEstatisticas() {
+    public SessaoEstatisticasResponse obterEstatisticas() {
         LocalDate hoje = LocalDate.now(AgendaUtil.ZONE_SP);
         Instant inicioHoje = hoje.atStartOfDay(AgendaUtil.ZONE_SP).toInstant();
         Instant fimHoje = hoje.plusDays(1).atStartOfDay(AgendaUtil.ZONE_SP).toInstant();
@@ -271,15 +272,15 @@ public class SessaoService {
                 .distinct()
                 .count();
 
-        Map<String, Object> resultado = new HashMap<>();
-        resultado.put("hoje", hojeTotal);
-        resultado.put("pendentes", pendentes);
-        resultado.put("compareceu", compareceu);
-        resultado.put("faltou", faltou);
-        resultado.put("total", total);
-        resultado.put("pessoasComFaltas", pessoasComFaltas);
-        resultado.put("pessoasQueCompareceram", pessoasQueCompareceram);
-        return resultado;
+        return new SessaoEstatisticasResponse(
+            hojeTotal,
+            pendentes,
+            compareceu,
+            faltou,
+            total,
+            pessoasComFaltas,
+            pessoasQueCompareceram
+        );
     }
 
     public Sessao marcarCompareceu(String id) {

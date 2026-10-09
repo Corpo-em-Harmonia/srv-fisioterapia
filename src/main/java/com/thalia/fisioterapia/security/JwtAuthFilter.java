@@ -16,7 +16,6 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.ArrayList;
 
 @Component
 @RequiredArgsConstructor
@@ -33,12 +32,25 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             String token = authHeader.substring(7);
-            if (jwtService.isValid(token)) {
-                Claims claims = jwtService.parseToken(token);
+            Claims claims;
+            try {
+                claims = jwtService.parseToken(token);
+            } catch (Exception e) {
+                filterChain.doFilter(request, response);
+                return;
+            }
+
                 String email = claims.getSubject();
-                List<String> roles = claims.get("roles", List.class);
+                Object rolesClaim = claims.get("roles");
+                List<String> roles = rolesClaim instanceof List<?> list
+                        ? list.stream()
+                                .filter(String.class::isInstance)
+                                .map(String.class::cast)
+                                .toList()
+                        : List.of();
                 if (roles == null || roles.isEmpty()) {
-                    roles = List.of(claims.get("role", String.class));
+                    String role = claims.get("role", String.class);
+                    roles = role == null ? List.of() : List.of(role);
                 }
 
                 boolean ativo = usuarioRepository.findByEmail(email)
@@ -54,7 +66,6 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                     );
                     SecurityContextHolder.getContext().setAuthentication(auth);
                 }
-            }
         }
 
         filterChain.doFilter(request, response);
