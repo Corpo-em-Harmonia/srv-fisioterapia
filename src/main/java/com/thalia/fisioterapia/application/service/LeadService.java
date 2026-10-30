@@ -1,17 +1,17 @@
 package com.thalia.fisioterapia.application.service;
 
-import com.thalia.fisioterapia.application.exception.AgendaConflictException;
 import com.thalia.fisioterapia.application.exception.BusinessException;
 import com.thalia.fisioterapia.application.exception.ResourceNotFoundException;
 import com.thalia.fisioterapia.domain.lead.Lead;
 import com.thalia.fisioterapia.domain.lead.LeadAcao;
 import com.thalia.fisioterapia.domain.lead.LeadStatus;
 import com.thalia.fisioterapia.domain.sessao.ModoAgendamento;
+import com.thalia.fisioterapia.domain.sessao.PerfilUsuario;
 import com.thalia.fisioterapia.domain.sessao.Sessao;
 import com.thalia.fisioterapia.domain.sessao.SessaoTipo;
 import com.thalia.fisioterapia.infrastructure.repository.lead.LeadRepository;
-import com.thalia.fisioterapia.infrastructure.repository.paciente.PacienteRepository;
 import com.thalia.fisioterapia.infrastructure.repository.sessao.SessaoRepository;
+import com.thalia.fisioterapia.security.UsuarioLogado;
 import com.thalia.fisioterapia.web.dto.agenda.AgendarAvaliacaoRequest;
 import com.thalia.fisioterapia.web.dto.agenda.AgendarAvaliacaoResponse;
 import com.thalia.fisioterapia.web.dto.lead.CriarLeadRequest;
@@ -35,16 +35,19 @@ public class LeadService {
 
     private final LeadRepository leadRepository;
     private final SessaoRepository sessaoRepository;
-    private final PacienteRepository pacienteRepository;
+    private final AgendaGuard agendaGuard;
+    private final UsuarioLogado usuarioLogado;
 
     public LeadService(
             LeadRepository leadRepository,
             SessaoRepository sessaoRepository,
-            PacienteRepository pacienteRepository
+            AgendaGuard agendaGuard,
+            UsuarioLogado usuarioLogado
     ) {
         this.leadRepository = leadRepository;
         this.sessaoRepository = sessaoRepository;
-        this.pacienteRepository = pacienteRepository;
+        this.agendaGuard = agendaGuard;
+        this.usuarioLogado = usuarioLogado;
     }
 
     public LeadResponse criar(CriarLeadRequest request) {
@@ -89,9 +92,15 @@ public class LeadService {
         return toResponse(leadRepository.save(lead));
     }
 
-    @Transactional
     public AgendarAvaliacaoResponse agendarAvaliacao(String leadId, AgendarAvaliacaoRequest req) {
         log.info("Agendando avaliação para lead [{}] modo={}", leadId, req.modoAgendamento());
+        String usuarioId = usuarioLogado.usuarioId();
+        PerfilUsuario perfil = usuarioLogado.perfilAuditoria();
+        return agendaGuard.executar(() -> agendarAvaliacao(leadId, req, usuarioId, perfil));
+    }
+
+    private AgendarAvaliacaoResponse agendarAvaliacao(String leadId, AgendarAvaliacaoRequest req,
+                                                      String usuarioId, PerfilUsuario perfil) {
         Lead lead = buscarLead(leadId);
         ModoAgendamento modoAgendamento = parseModoAgendamento(req.modoAgendamento());
 
@@ -132,10 +141,10 @@ public class LeadService {
             AgendaUtil.validarJanela(dataHoraOcorrencia);
 
             Instant dataHoraInstant = dataHoraOcorrencia.atZone(AgendaUtil.ZONE_SP).toInstant();
-            validarConflitosAgenda(dataHoraInstant, req.fisioterapeutaId());
+            agendaGuard.validarHorarioLivre(dataHoraInstant, req.fisioterapeutaId(), Set.of());
 
             SessaoTipo tipoSessao = (i == 0) ? SessaoTipo.AVALIACAO : SessaoTipo.SESSAO;
-            Sessao sessao = new Sessao(lead.getId(), tipoSessao, dataHoraInstant, req.observacao());
+            Sessao sessao = new Sessao(lead.getId(), tipoSessao, dataHoraInstant, req.observacao(), usuarioId, perfil);
 
             if (serieId != null) sessao.definirSerie(serieId, i + 1);
             if (req.fisioterapeutaId() != null && !req.fisioterapeutaId().isBlank()) {
@@ -155,40 +164,6 @@ public class LeadService {
                 salvas.getFirst().getId(),
                 "Agendamento criado com sucesso"
         );
-    }
-
-    private void validarConflitosAgenda(Instant dataHora, String fisioterapeutaId) {
-        List<Sessao> conflitos = sessaoRepository.findByDataHoraAndStatusIn(dataHora, AgendaUtil.STATUS_CONFLITO);
-
-        if (fisioterapeutaId != null && !fisioterapeutaId.isBlank()) {
-            boolean fisioOcupada = conflitos.stream()
-                    .anyMatch(s -> fisioterapeutaId.equals(s.getFisioterapeutaId()));
-            if (fisioOcupada) {
-                throw new AgendaConflictException("Fisioterapeuta já possui um atendimento nesse horário", List.of());
-            }
-        }
-
-        if (conflitos.size() >= AgendaUtil.MAX_POR_HORARIO) {
-            List<AgendaConflictException.ConflitoAgendaItem> itens = conflitos.stream()
-                    .map(s -> new AgendaConflictException.ConflitoAgendaItem(
-                            s.getId(), s.getDataHora(), obterNomePessoa(s)))
-                    .toList();
-            throw new AgendaConflictException("Ja existe sessao nesse horario", itens);
-        }
-    }
-
-    private String obterNomePessoa(Sessao sessao) {
-        if (sessao.getPacienteId() != null) {
-            return pacienteRepository.findById(sessao.getPacienteId())
-                    .map(p -> p.getNome() != null ? p.getNome() : "Paciente")
-                    .orElse("Paciente");
-        }
-        if (sessao.getLeadId() != null) {
-            return leadRepository.findById(sessao.getLeadId())
-                    .map(l -> l.getNome() != null ? l.getNome() : "Lead")
-                    .orElse("Lead");
-        }
-        return "Paciente";
     }
 
     private ModoAgendamento parseModoAgendamento(String modoAgendamento) {

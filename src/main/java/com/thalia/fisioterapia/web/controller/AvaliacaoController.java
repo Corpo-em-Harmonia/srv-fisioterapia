@@ -12,6 +12,8 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.access.prepost.PreAuthorize;
+import com.thalia.fisioterapia.security.Perfis;
 
 @RestController
 @RequestMapping("/api/avaliacoes")
@@ -24,18 +26,21 @@ public class AvaliacaoController {
     }
 
     @PostMapping("/iniciar")
+    @PreAuthorize(Perfis.CLINICO)
     public ResponseEntity<Void> iniciar(@Valid @RequestBody IniciarAvaliacaoRequest request) {
         avaliacaoService.iniciar(request.getLeadId());
         return ResponseEntity.ok().build();
     }
 
     @PostMapping("/finalizar")
+    @PreAuthorize(Perfis.CLINICO)
     public ResponseEntity<Void> finalizar(@Valid @RequestBody FinalizarAvaliacaoRequest request) {
         avaliacaoService.finalizar(request);
         return ResponseEntity.ok().build();
     }
 
     @GetMapping("/pendentes")
+    @PreAuthorize(Perfis.CLINICO)
     public ResponseEntity<Page<AvaliacaoPendenteResponse>> pendentes(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "50") int size
@@ -45,6 +50,7 @@ public class AvaliacaoController {
     }
 
     @GetMapping("/historico")
+    @PreAuthorize(Perfis.CLINICO)
     public ResponseEntity<Page<AvaliacaoHistoricoResponse>> historico(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "50") int size
@@ -54,11 +60,13 @@ public class AvaliacaoController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize(Perfis.CLINICO)
     public ResponseEntity<AvaliacaoDetalheResponse> detalhe(@PathVariable String id) {
         return ResponseEntity.ok(avaliacaoService.getDetalhe(id));
     }
 
     @PatchMapping("/{id}")
+    @PreAuthorize(Perfis.CLINICO)
     public ResponseEntity<AvaliacaoDetalheResponse> atualizar(
             @PathVariable String id,
             @Valid @RequestBody FinalizarAvaliacaoRequest request) {
@@ -66,6 +74,7 @@ public class AvaliacaoController {
     }
 
     @GetMapping("/by-paciente/{pacienteId}")
+    @PreAuthorize(Perfis.EQUIPE_OU_PACIENTE)
     public ResponseEntity<AvaliacaoDetalheResponse> detalhePorPaciente(@PathVariable String pacienteId) {
         return ResponseEntity.ok(avaliacaoService.getDetalheByPaciente(pacienteId));
     }

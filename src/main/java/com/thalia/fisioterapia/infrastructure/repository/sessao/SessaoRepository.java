@@ -24,8 +24,8 @@ public interface SessaoRepository extends MongoRepository<Sessao, String> {
 
 
     // Sessões pendentes (hoje + atrasadas não confirmadas)
-    @Query("{ 'dataHora': { $lte: ?0 }, 'status': { $in: ['MARCADA', 'REMARCADA'] } }")
-    List<Sessao> findPendentes(Instant agora);
+    @Query(value = "{ 'dataHora': { $lte: ?0 }, 'status': { $in: ['MARCADA', 'REMARCADA'] } }", count = true)
+    long countPendentes(Instant agora);
 
     @Query("{ 'dataHora': { $lte: ?0 }, 'status': { $in: ['MARCADA', 'REMARCADA'] } }")
     Page<Sessao> findPendentes(Instant agora, Pageable pageable);
@@ -65,6 +65,7 @@ public interface SessaoRepository extends MongoRepository<Sessao, String> {
     long countByDataHoraBetweenAndStatus(Instant start, Instant end, SessaoStatus status);
 
     // Sessões por paciente
+    Page<Sessao> findByPacienteId(String pacienteId, Pageable pageable);
     List<Sessao> findByPacienteIdOrderByDataHoraDesc(String pacienteId);
         List<Sessao> findByPacienteIdOrderByDataHoraAsc(String pacienteId);
 

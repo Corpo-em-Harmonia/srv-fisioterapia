@@ -13,6 +13,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import com.thalia.fisioterapia.security.Perfis;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -26,7 +27,7 @@ public class UsuarioController {
 
     // RECEPCIONISTA recebe apenas os pacientes (filtro aplicado no service).
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN','RECEPCIONISTA')")
+    @PreAuthorize(Perfis.RECEPCAO)
     public ResponseEntity<Page<UsuarioResponse>> listar(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "50") int size
@@ -37,14 +38,14 @@ public class UsuarioController {
 
     // Usado pela recepção para escolher a fisio responsável ao agendar uma avaliação.
     @GetMapping("/fisioterapeutas")
-    @PreAuthorize("hasAnyRole('ADMIN','RECEPCIONISTA')")
+    @PreAuthorize(Perfis.RECEPCAO)
     public ResponseEntity<List<UsuarioResponse>> listarFisioterapeutas() {
         return ResponseEntity.ok(usuarioService.listarFisioterapeutas());
     }
 
     // RECEPCIONISTA só pode criar PACIENTE — regra validada em UsuarioService.criar.
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN','RECEPCIONISTA')")
+    @PreAuthorize(Perfis.RECEPCAO)
     public ResponseEntity<UsuarioResponse> criar(@Valid @RequestBody CriarUsuarioRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(usuarioService.criar(request));
     }
@@ -64,7 +65,7 @@ public class UsuarioController {
 
     // RECEPCIONISTA só pode redefinir senha de PACIENTE — validado em UsuarioService.resetSenha.
     @PostMapping("/{id}/reset-senha")
-    @PreAuthorize("hasAnyRole('ADMIN','RECEPCIONISTA')")
+    @PreAuthorize(Perfis.RECEPCAO)
     public ResponseEntity<Void> resetSenha(@PathVariable String id,
                                            @Valid @RequestBody ResetSenhaRequest request) {
         usuarioService.resetSenha(id, request);

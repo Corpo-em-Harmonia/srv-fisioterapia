@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import com.thalia.fisioterapia.security.Perfis;
 
 @RestController
 @RequestMapping("/api/pacientes")
@@ -32,6 +33,7 @@ public class PacienteController {
     }
 
     @GetMapping("/ativos")
+    @PreAuthorize(Perfis.EQUIPE)
     public ResponseEntity<Page<PacienteAtivoResponse>> ativos(
             @RequestParam(defaultValue = "0")  int page,
             @RequestParam(defaultValue = "20") int size,
@@ -41,7 +43,7 @@ public class PacienteController {
     }
 
     @PatchMapping("/{id}/fisioterapeuta")
-    @PreAuthorize("hasAnyRole('ADMIN','RECEPCIONISTA')")
+    @PreAuthorize(Perfis.RECEPCAO)
     public ResponseEntity<Void> atribuirFisioterapeuta(
             @PathVariable String id,
             @RequestBody AtribuirFisioterapeutaRequest request) {
@@ -50,6 +52,7 @@ public class PacienteController {
     }
 
     @PostMapping("/{id}/agendar-sessoes")
+    @PreAuthorize(Perfis.EQUIPE)
     public ResponseEntity<AgendarSessoesResponse> agendarSessoes(
             @PathVariable String id,
             @Valid @RequestBody AgendarSessoesRequest request

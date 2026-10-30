@@ -5,6 +5,7 @@ import com.thalia.fisioterapia.domain.lead.Lead;
 import com.thalia.fisioterapia.infrastructure.repository.lead.LeadRepository;
 import com.thalia.fisioterapia.infrastructure.repository.paciente.PacienteRepository;
 import com.thalia.fisioterapia.infrastructure.repository.sessao.SessaoRepository;
+import com.thalia.fisioterapia.security.UsuarioLogado;
 import com.thalia.fisioterapia.web.dto.agenda.AgendarAvaliacaoRequest;
 import com.thalia.fisioterapia.web.dto.agenda.AgendarAvaliacaoResponse;
 import org.junit.jupiter.api.BeforeEach;
@@ -41,11 +42,15 @@ class LeadServiceTest {
     @Mock
     private PacienteRepository pacienteRepository;
 
+    @Mock
+    private UsuarioLogado usuarioLogado;
+
     private LeadService leadService;
 
     @BeforeEach
     void setUp() {
-        this.leadService = new LeadService(leadRepository, sessaoRepository, pacienteRepository);
+        AgendaGuard agendaGuard = new AgendaGuard(sessaoRepository, pacienteRepository, leadRepository);
+        this.leadService = new LeadService(leadRepository, sessaoRepository, agendaGuard, usuarioLogado);
     }
 
     @Test

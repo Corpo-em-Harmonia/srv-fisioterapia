@@ -4,6 +4,8 @@ import com.thalia.fisioterapia.application.service.SessaoService;
 import com.thalia.fisioterapia.web.dto.sessao.DisponibilidadeResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.access.prepost.PreAuthorize;
+import com.thalia.fisioterapia.security.Perfis;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -19,6 +21,7 @@ public class AgendamentoController {
     }
 
     @GetMapping("/disponibilidade")
+    @PreAuthorize(Perfis.EQUIPE)
     public ResponseEntity<List<DisponibilidadeResponse>> disponibilidade(
             @RequestParam("date") LocalDate date,
             @RequestParam(value = "excludeId", required = false) String excludeId,
