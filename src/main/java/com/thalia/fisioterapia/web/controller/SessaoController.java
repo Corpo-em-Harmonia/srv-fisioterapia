@@ -15,12 +15,16 @@ import com.thalia.fisioterapia.web.dto.sessao.RemarcarSessaoRequest;
 import com.thalia.fisioterapia.web.dto.sessao.RemarcarSessaoResponse;
 import com.thalia.fisioterapia.web.dto.sessao.SessaoHistoricoResponse;
 import com.thalia.fisioterapia.web.dto.sessao.SessaoResponse;
+import com.thalia.fisioterapia.web.dto.sessao.SessaoEstatisticasResponse;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.access.prepost.PreAuthorize;
+import com.thalia.fisioterapia.security.Perfis;
+import com.thalia.fisioterapia.security.UsuarioLogado;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -36,16 +40,20 @@ public class SessaoController {
     private final PacienteRepository pacienteRepository;
     private final LeadRepository leadRepository;
     private final UsuarioRepository usuarioRepository;
+    private final UsuarioLogado usuarioLogado;
 
     public SessaoController(SessaoService sessaoService, PacienteRepository pacienteRepository,
-                             LeadRepository leadRepository, UsuarioRepository usuarioRepository) {
+                             LeadRepository leadRepository, UsuarioRepository usuarioRepository,
+                             UsuarioLogado usuarioLogado) {
         this.sessaoService = sessaoService;
         this.pacienteRepository = pacienteRepository;
         this.leadRepository = leadRepository;
         this.usuarioRepository = usuarioRepository;
+        this.usuarioLogado = usuarioLogado;
     }
 
     @GetMapping
+    @PreAuthorize(Perfis.EQUIPE_OU_PACIENTE)
     public ResponseEntity<Page<SessaoResponse>> listar(
             @RequestParam(required = false) String periodo,
             @RequestParam(required = false) LocalDate date,
@@ -70,7 +78,10 @@ public class SessaoController {
         var pageable = PageRequest.of(page, size, Sort.by("dataHora").ascending());
         Page<Sessao> sessoes;
 
-        if (date != null) {
+        if (!usuarioLogado.ehEquipe()) {
+            // Paciente: sempre só a própria agenda, independente dos filtros pedidos.
+            sessoes = sessaoService.listarDoPacienteLogado(pageable);
+        } else if (date != null) {
             sessoes = sessaoService.listarPorDia(date, statusFiltro, pageable);
         } else if (periodo != null) {
             sessoes = sessaoService.listarPorPeriodo(periodo, statusFiltro, pageable);
@@ -82,26 +93,31 @@ public class SessaoController {
     }
 
     @GetMapping("/estatisticas")
-    public ResponseEntity<Map<String, Object>> estatisticas() {
+    @PreAuthorize(Perfis.EQUIPE)
+    public ResponseEntity<SessaoEstatisticasResponse> estatisticas() {
         return ResponseEntity.ok(sessaoService.obterEstatisticas());
     }
 
     @PatchMapping("/{id}/compareceu")
+    @PreAuthorize(Perfis.EQUIPE)
     public ResponseEntity<SessaoResponse> compareceu(@PathVariable String id) {
         return ResponseEntity.ok(toResponse(sessaoService.marcarCompareceu(id)));
     }
 
     @PatchMapping("/{id}/faltou")
+    @PreAuthorize(Perfis.EQUIPE)
     public ResponseEntity<SessaoResponse> faltou(@PathVariable String id) {
         return ResponseEntity.ok(toResponse(sessaoService.marcarFaltou(id)));
     }
 
     @PatchMapping("/{id}/cancelar")
+    @PreAuthorize(Perfis.EQUIPE)
     public ResponseEntity<SessaoResponse> cancelar(@PathVariable String id) {
         return ResponseEntity.ok(toResponse(sessaoService.cancelar(id)));
     }
 
     @PatchMapping("/{id}/remarcar")
+    @PreAuthorize(Perfis.EQUIPE)
     public ResponseEntity<RemarcarSessaoResponse> remarcar(@PathVariable String id, @Valid @RequestBody RemarcarSessaoRequest req) {
         SessaoService.RemarcacaoResultado resultado = sessaoService.remarcar(id, req.dataHora(), req.escopo(), req.motivo());
         return ResponseEntity.ok(new RemarcarSessaoResponse(
@@ -112,21 +128,25 @@ public class SessaoController {
     }
 
     @PatchMapping("/{id}/compareceu-avaliacao")
+    @PreAuthorize(Perfis.EQUIPE)
     public ResponseEntity<SessaoResponse> compareceuAvaliacao(@PathVariable String id) {
         return ResponseEntity.ok(toResponse(sessaoService.marcarCompareceuAvaliacao(id)));
     }
 
     @PatchMapping("/{id}/avaliar")
+    @PreAuthorize(Perfis.CLINICO)
     public ResponseEntity<SessaoResponse> marcarAvaliada(@PathVariable String id) {
         return ResponseEntity.ok(toResponse(sessaoService.marcarAvaliada(id)));
     }
 
     @PostMapping("/{id}/converter-lead")
+    @PreAuthorize(Perfis.CLINICO)
     public ResponseEntity<IniciarAvaliacaoResponse> converterLead(@PathVariable String id) {
         return ResponseEntity.ok(sessaoService.converterLeadParaPaciente(id));
     }
 
     @PatchMapping("/{id}/evolucao")
+    @PreAuthorize(Perfis.CLINICO)
     public ResponseEntity<SessaoResponse> registrarEvolucao(
             @PathVariable String id,
             @Valid @RequestBody RegistrarEvolucaoRequest req
@@ -135,6 +155,7 @@ public class SessaoController {
     }
 
     @GetMapping("/historico/{pacienteId}")
+    @PreAuthorize(Perfis.EQUIPE_OU_PACIENTE)
     public ResponseEntity<List<SessaoHistoricoResponse>> historico(@PathVariable String pacienteId) {
         return ResponseEntity.ok(sessaoService.getHistoricoPaciente(pacienteId));
     }

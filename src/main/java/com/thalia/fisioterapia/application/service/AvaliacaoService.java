@@ -15,6 +15,7 @@ import com.thalia.fisioterapia.web.dto.avaliacao.AvaliacaoPendenteResponse;
 import com.thalia.fisioterapia.domain.lead.Lead;
 import com.thalia.fisioterapia.domain.paciente.Paciente;
 import com.thalia.fisioterapia.web.dto.avaliacao.FinalizarAvaliacaoRequest;
+import com.thalia.fisioterapia.security.UsuarioLogado;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -32,17 +33,20 @@ public class AvaliacaoService {
     private final SessaoRepository sessaoRepository;
     private final LeadRepository leadRepository;
     private final PacienteRepository pacienteRepository;
+    private final UsuarioLogado usuarioLogado;
 
     public AvaliacaoService(
             AvaliacaoRepository repository,
             SessaoRepository sessaoRepository,
             LeadRepository leadRepository,
-            PacienteRepository pacienteRepository
+            PacienteRepository pacienteRepository,
+            UsuarioLogado usuarioLogado
     ) {
         this.repository = repository;
         this.sessaoRepository = sessaoRepository;
         this.leadRepository = leadRepository;
         this.pacienteRepository = pacienteRepository;
+        this.usuarioLogado = usuarioLogado;
     }
 
     public void iniciar(String avaliacaoId){
@@ -58,14 +62,14 @@ public class AvaliacaoService {
     public void finalizar(FinalizarAvaliacaoRequest request){
         Avaliacao avaliacao = repository.findById(request.getAvaliacaoId())
                 .orElseThrow(() -> new ResourceNotFoundException("Avaliação não encontrada"));
-        avaliacao.finalizar(fichaFrom(request));
+        avaliacao.finalizar(fichaFrom(request), usuarioLogado.usuarioId());
         repository.save(avaliacao);
     }
 
     public AvaliacaoDetalheResponse atualizar(String id, FinalizarAvaliacaoRequest request) {
         Avaliacao avaliacao = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Avaliação não encontrada"));
-        avaliacao.atualizar(fichaFrom(request));
+        avaliacao.atualizar(fichaFrom(request), usuarioLogado.usuarioId());
         Avaliacao salva = repository.save(avaliacao);
         return toDetalheResponse(salva);
     }
@@ -154,6 +158,7 @@ public class AvaliacaoService {
     }
 
     public AvaliacaoDetalheResponse getDetalheByPaciente(String pacienteId) {
+        usuarioLogado.garantirAcessoAoPaciente(pacienteId);
         return toDetalheResponse(repository.findFirstByPacienteIdOrderByCriadaEmDesc(pacienteId)
                 .orElseThrow(() -> new ResourceNotFoundException("Avaliação não encontrada para o paciente")));
     }

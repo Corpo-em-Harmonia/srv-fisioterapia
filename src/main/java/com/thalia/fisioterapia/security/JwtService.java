@@ -55,7 +55,7 @@ public class JwtService {
                 .issuer(ISSUER)
                 .audience().add(AUDIENCE).and()
                 .subject(email)
-                .claim("role", roles.get(0))
+                .claim("role", roles.getFirst())
                 .claim("roles", roles)
                 .claim("nome", nome)
                 .issuedAt(now)

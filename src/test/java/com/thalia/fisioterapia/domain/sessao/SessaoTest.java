@@ -100,4 +100,17 @@ class SessaoTest {
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("avaliações");
     }
+
+    @Test
+    void deveRegistrarQuemFezCadaAcaoNaAuditoria() {
+        Sessao s = new Sessao("pac-1", "aval-1", Instant.now().plus(1, ChronoUnit.HOURS), null, "u-recepcao", PerfilUsuario.RECEPCAO);
+        s.marcarFaltou("u-recepcao", PerfilUsuario.RECEPCAO);
+
+        assertThat(s.getAlteracoes()).extracting(SessaoAlteracao::getAcao)
+                .containsExactly(SessaoAuditoriaAcao.CRIAR, SessaoAuditoriaAcao.REGISTRAR_FALTA);
+        assertThat(s.getAlteracoes()).allSatisfy(a -> {
+            assertThat(a.getUsuarioId()).isEqualTo("u-recepcao");
+            assertThat(a.getPerfil()).isEqualTo(PerfilUsuario.RECEPCAO);
+        });
+    }
 }

@@ -4,12 +4,15 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.CompoundIndex;
+import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.LocalDateTime;
 
 @Slf4j
 @Document(collection = "leads")
+@CompoundIndex(name = "status_criadoEm", def = "{ 'status': 1, 'criadoEm': -1 }")
 @Getter
 @Setter
 public class Lead {
@@ -19,6 +22,7 @@ public class Lead {
 
     private String nome;
     private String sobrenome;
+    @Indexed
     private String email;
     private String telefone;
     private String observacao;

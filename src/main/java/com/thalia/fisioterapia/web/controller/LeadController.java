@@ -13,6 +13,8 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.access.prepost.PreAuthorize;
+import com.thalia.fisioterapia.security.Perfis;
 
 @RestController
 @RequestMapping("/api/leads")
@@ -30,6 +32,7 @@ public class LeadController {
     }
 
     @GetMapping
+    @PreAuthorize(Perfis.RECEPCAO)
     public ResponseEntity<Page<LeadResponse>> listar(
             @RequestParam(value = "ativos", required = false) Boolean ativos,
             @RequestParam(defaultValue = "0") int page,
@@ -43,6 +46,7 @@ public class LeadController {
     }
 
     @PostMapping("/{id}/acoes")
+    @PreAuthorize(Perfis.RECEPCAO)
     public ResponseEntity<LeadResponse> executarAcao(
             @PathVariable String id,
             @Valid @RequestBody ExecutarAcaoLeadRequest request
@@ -51,6 +55,7 @@ public class LeadController {
     }
 
     @PostMapping("/{id}/agendar-avaliacao")
+    @PreAuthorize(Perfis.RECEPCAO)
     public ResponseEntity<AgendarAvaliacaoResponse> agendarAvaliacao(
             @PathVariable String id,
             @Valid @RequestBody AgendarAvaliacaoRequest request
@@ -59,6 +64,7 @@ public class LeadController {
     }
 
     @GetMapping("/buscar-email")
+    @PreAuthorize(Perfis.RECEPCAO)
     public ResponseEntity<LeadResponse> buscarPorEmail(@RequestParam String email) {
         return leadService.buscarPorEmail(email)
                 .map(ResponseEntity::ok)
@@ -66,6 +72,7 @@ public class LeadController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize(Perfis.RECEPCAO)
     public ResponseEntity<Void> deletarLead(@PathVariable String id) {
         leadService.deletarLead(id);
         return ResponseEntity.noContent().build();

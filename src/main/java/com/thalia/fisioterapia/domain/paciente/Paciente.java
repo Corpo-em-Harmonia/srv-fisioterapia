@@ -4,6 +4,7 @@ import com.thalia.fisioterapia.domain.lead.Lead;
 import lombok.Data;
 import lombok.Getter;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.LocalDateTime;
@@ -16,11 +17,13 @@ public class Paciente {
     @Id
     private String id;
 
+    @Indexed
     private String leadId;
 
     private String nome;
     private String sobrenome;
     private String telefone;
+    @Indexed
     private String email;
 
     private String dataNascimento;
@@ -30,6 +33,7 @@ public class Paciente {
     private LocalDateTime criadoEm;
     private int totalFaltas = 0;
     private int totalComparecimentos = 0;
+    @Indexed
     private String fisioterapeutaId;
 
     private Paciente() {
